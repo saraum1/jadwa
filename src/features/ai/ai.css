@@ -1,0 +1,75 @@
+/* جدوى AI: لوحة «اسأل جدوى» + لوحة الاجتماع الصوتي */
+.jai-panel{position:fixed;left:24px;bottom:78px;width:min(400px,calc(100vw - 32px));height:min(600px,calc(100vh - 110px));background:#fff;border:1px solid #e4eaf4;border-radius:18px;box-shadow:0 25px 70px #12244833;display:flex;flex-direction:column;z-index:40;overflow:hidden;font-family:'IBM Plex Sans Arabic',Tahoma,sans-serif;color:#0f172a;direction:rtl;text-align:right}
+.jai-panel[hidden]{display:none}
+.jai-head{display:flex;align-items:center;gap:10px;padding:14px 16px;border-bottom:1px solid #eef2f7;background:#0f172a;color:#fff}
+.jai-head div{flex:1;display:flex;flex-direction:column;line-height:1.4}
+.jai-head b{font-size:15px}.jai-head small{font-size:11.5px;color:#a9bad6}
+.jai-avatar{width:34px;height:34px;border-radius:50%;background:linear-gradient(135deg,#2563eb,#14b8a6);display:grid;place-items:center;font-weight:700;font-size:15px}
+.jai-icon{background:#ffffff14;border:0;color:#fff;width:30px;height:30px;border-radius:8px;cursor:pointer;font-size:14px}
+.jai-icon:hover{background:#ffffff2a}
+.jai-messages{flex:1;overflow-y:auto;padding:16px;display:flex;flex-direction:column;gap:10px;background:#f8fafc}
+.jai-msg{max-width:88%;padding:10px 13px;border-radius:14px;font-size:14px;line-height:1.85;word-wrap:break-word}
+.jai-msg p{margin:0 0 4px}.jai-msg p:last-child{margin:0}
+.jai-msg ul{margin:4px 0;padding-inline-start:18px}.jai-msg li{margin:2px 0}
+.jai-user{align-self:flex-start;background:#2563eb;color:#fff;border-end-start-radius:4px}
+.jai-model{align-self:flex-end;background:#fff;border:1px solid #e6ecf4;border-end-end-radius:4px}
+.jai-intro{background:#eef5ff;border-color:#d7e5fd}
+.jai-error{background:#fff4f2;border-color:#f8d2cb;color:#9f2d1c}
+.jai-typing{display:inline-flex;gap:4px;padding:4px 0}
+.jai-typing i{width:7px;height:7px;border-radius:50%;background:#94a3b8;animation:jai-dot 1s infinite ease-in-out}
+.jai-typing i:nth-child(2){animation-delay:.15s}.jai-typing i:nth-child(3){animation-delay:.3s}
+@keyframes jai-dot{0%,80%,100%{opacity:.3;transform:translateY(0)}40%{opacity:1;transform:translateY(-3px)}}
+.jai-suggestions{display:flex;flex-wrap:wrap;gap:6px;padding:0 14px 10px;background:#f8fafc}
+.jai-suggestions:empty{display:none}
+.jai-suggestions button{background:#fff;border:1px solid #d7e2f3;color:#1e3a8a;border-radius:16px;padding:6px 11px;font-size:12.5px;cursor:pointer;font-family:inherit}
+.jai-suggestions button:hover{background:#eef5ff}
+.jai-form{display:flex;gap:8px;align-items:flex-end;padding:10px 12px;border-top:1px solid #eef2f7}
+.jai-form textarea{flex:1;resize:none;border:1px solid #dbe3ee;border-radius:12px;padding:9px 12px;font:inherit;font-size:14px;line-height:1.6;max-height:120px;outline:none}
+.jai-form textarea:focus{border-color:#2563eb;box-shadow:0 0 0 3px #2563eb1a}
+.jai-form button{width:40px;height:40px;border-radius:12px;border:0;background:#2563eb;color:#fff;font-size:18px;cursor:pointer;flex:none}
+.jai-form button:disabled{opacity:.5;cursor:wait}
+.jai-note{margin:0;padding:0 14px 10px;font-size:11px;color:#8d98aa;text-align:center}
+@media (max-width:640px){.jai-panel{left:0;bottom:0;width:100vw;height:100dvh;border-radius:0}body.jai-open .advisor-button{display:none}}
+
+/* اجتماع جدوى الصوتي */
+.voice-panel{background:#fff;border:1px solid #e4eaf4;border-radius:16px;padding:16px 18px;margin:16px 0;font-family:'IBM Plex Sans Arabic',Tahoma,sans-serif}
+.voice-bar{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.voice-status{display:flex;align-items:center;gap:9px;font-size:14px;color:#334155}
+.voice-dot{width:11px;height:11px;border-radius:50%;background:#cbd5e1;flex:none}
+.voice-dot.listening{background:#ef4444;box-shadow:0 0 0 0 #ef444466;animation:voice-pulse 1.2s infinite}
+.voice-dot.speaking{background:#14b8a6;animation:voice-pulse 1.2s infinite}
+.voice-dot.thinking{background:#2563eb;animation:voice-blink 1s infinite}
+@keyframes voice-pulse{0%{box-shadow:0 0 0 0 #14b8a655}70%{box-shadow:0 0 0 9px #14b8a600}100%{box-shadow:0 0 0 0 #14b8a600}}
+@keyframes voice-blink{50%{opacity:.35}}
+.voice-controls{display:flex;gap:8px;flex-wrap:wrap}
+.voice-controls button,.voice-plan .voice-start{border:0;border-radius:10px;padding:10px 18px;font:inherit;font-size:14px;cursor:pointer}
+.voice-start{background:#2563eb;color:#fff}.voice-start:hover{background:#1d4ed8}
+.voice-mic{background:#0f172a;color:#fff;min-width:110px}.voice-mic[aria-pressed="true"]{background:#ef4444}
+.voice-mic:disabled{opacity:.5;cursor:wait}
+.voice-end{background:#fff;color:#9f2d1c;border:1px solid #f3c5bc!important}
+.voice-type{display:flex;gap:8px;margin-top:12px}
+.voice-type[hidden]{display:none}
+.voice-type input{flex:1;border:1px solid #dbe3ee;border-radius:10px;padding:9px 12px;font:inherit;font-size:14px}
+.voice-type button{border:0;background:#eef4ff;color:#1e3a8a;border-radius:10px;padding:0 16px;font:inherit;cursor:pointer}
+.voice-transcript{max-height:260px;overflow-y:auto;margin-top:12px;display:flex;flex-direction:column;gap:8px}
+.voice-transcript:empty{display:none}
+.voice-line{font-size:14px;line-height:1.9;padding:8px 12px;border-radius:12px;background:#f8fafc}
+.voice-line b{font-size:12px;color:#64748b;display:block}.voice-line p{margin:0}
+.voice-user{background:#eef4ff}.voice-error{background:#fff4f2;color:#9f2d1c}
+.voice-plan{margin-top:14px;border-top:1px solid #eef2f7;padding-top:12px}
+.voice-plan[hidden]{display:none}
+.voice-plan h2{font-size:16px;margin:0 0 8px}
+.voice-plan ol{margin:0 0 12px;padding-inline-start:20px}.voice-plan li{margin:6px 0;line-height:1.8}
+.voice-plan li span{display:block;font-size:12.5px;color:#0b9875}
+.voice-note{font-size:12px;color:#8d98aa;margin:12px 0 0}
+.room-caption{position:absolute;bottom:16px;left:50%;transform:translateX(-50%);max-width:min(680px,90%);background:#0f172acc;color:#fff;padding:9px 16px;border-radius:12px;font-size:15px;line-height:1.8;text-align:center;z-index:3;font-family:'IBM Plex Sans Arabic',Tahoma,sans-serif;pointer-events:none}
+.room-caption[hidden]{display:none}
+/* تجاوز تأثير hover العام في room.css */
+.voice-panel .voice-start:hover{background:#1d4ed8;color:#fff}
+.voice-panel .voice-mic:hover{background:#1e293b;color:#fff}
+.voice-panel .voice-mic[aria-pressed="true"]:hover{background:#dc2626}
+.voice-panel .voice-end:hover{background:#fff4f2;color:#9f2d1c}
+.voice-panel .voice-type button:hover{background:#dbe7ff;color:#1e3a8a}
+.voice-panel p{color:inherit}
+.voice-line p{font-size:14px;color:#1e293b;line-height:1.9;margin:0}
+.voice-error p{color:#9f2d1c}
