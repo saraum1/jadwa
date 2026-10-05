@@ -5,14 +5,20 @@ export const config = {
   key: () => process.env.GEMINI_API_KEY,
   model: () => process.env.GEMINI_MODEL || 'gemini-3.8-flash',
   ttsModel: () => process.env.GEMINI_TTS_MODEL || 'gemini-3.8-flash-lite-tts',
-  voice: () => process.env.GEMINI_VOICE || 'Charon'
+  voice: () => process.env.GEMINI_VOICE || 'Charon',
+  // نماذج احتياطية عند ضغط سيرفرات Google (503) أو انتهاء حد نموذج معين (429)
+  fallbacks: () => list(process.env.GEMINI_FALLBACK_MODELS, ['gemini-3.5-flash', 'gemini-3.5-flash-lite']),
+  ttsFallbacks: () => list(process.env.GEMINI_TTS_FALLBACK_MODELS, ['gemini-3.8-flash-tts'])
 };
+function list(value, defaults) { return value ? value.split(',').map(s => s.trim()).filter(Boolean) : defaults; }
+const RETRYABLE = new Set([429, 500, 502, 503, 504]);
+const sleep = ms => new Promise(r => setTimeout(r, ms));
 
 export class GeminiError extends Error {
   constructor(status, detail) { super(detail); this.status = status; }
 }
 
-async function post(model, method, body, { stream = false } = {}) {
+async function postOnce(model, method, body, stream) {
   const url = `${BASE}${encodeURIComponent(model)}:${method}${stream ? '?alt=sse' : ''}`;
   const send = b => fetch(url, { method: 'POST', headers: { 'content-type': 'application/json', 'x-goog-api-key': config.key() }, body: JSON.stringify(b) });
   let res = await send(body);
@@ -26,6 +32,24 @@ async function post(model, method, body, { stream = false } = {}) {
   }
   if (!res.ok) throw new GeminiError(res.status, (await res.text()).slice(0, 500));
   return res;
+}
+
+// يجرب النموذج الأساسي مرتين، ثم النماذج الاحتياطية بالترتيب، عند الأخطاء المؤقتة فقط.
+async function post(models, method, body, { stream = false } = {}) {
+  let last;
+  for (const [i, model] of [...new Set(models)].entries()) {
+    for (let attempt = 0; attempt < (i === 0 ? 2 : 1); attempt++) {
+      try {
+        return await postOnce(model, method, body, stream);
+      } catch (err) {
+        last = err;
+        if (!(err instanceof GeminiError) || !RETRYABLE.has(err.status)) throw err;
+        console.warn(`Gemini ${err.status} on ${model}; retrying`);
+        if (attempt === 0 && i === 0) await sleep(600);
+      }
+    }
+  }
+  throw last;
 }
 
 function textFrom(json) {
@@ -47,13 +71,13 @@ function request(system, contents, { maxTokens = 700, json = false } = {}) {
 }
 
 export async function generate(system, contents, opts) {
-  const res = await post(config.model(), 'generateContent', request(system, contents, opts));
+  const res = await post([config.model(), ...config.fallbacks()], 'generateContent', request(system, contents, opts));
   return textFrom(await res.json());
 }
 
 // يحول SSE من Gemini إلى نص عادي يصل للمتصفح تدريجيًا.
 export async function generateStream(system, contents, opts) {
-  const res = await post(config.model(), 'streamGenerateContent', request(system, contents, opts), { stream: true });
+  const res = await post([config.model(), ...config.fallbacks()], 'streamGenerateContent', request(system, contents, opts), { stream: true });
   const decoder = new TextDecoder(), encoder = new TextEncoder();
   let buffer = '';
   return res.body.pipeThrough(new TransformStream({
@@ -75,7 +99,7 @@ export async function generateStream(system, contents, opts) {
 // تحويل نص إلى صوت. يرجع WAV جاهز للتشغيل في المتصفح.
 export async function speak(text, style) {
   const prompt = `${style}\n\n${text}`;
-  const res = await post(config.ttsModel(), 'generateContent', {
+  const res = await post([config.ttsModel(), ...config.ttsFallbacks()], 'generateContent', {
     contents: [{ role: 'user', parts: [{ text: prompt }] }],
     generationConfig: {
       responseModalities: ['AUDIO'],

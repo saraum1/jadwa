@@ -21,6 +21,7 @@ export async function readBody(req, maxBytes) {
 export function errorResponse(err) {
   if (err instanceof GeminiError) {
     console.error('Gemini error', err.status, err.message);
+    if (err.status === 503 || err.status === 500) return json(503, { error: 'سيرفرات Google مضغوطة الحين. حاولي بعد دقيقة.', code: 'overloaded' });
     if (err.status === 429) return json(429, { error: 'وصلنا لحد الاستخدام المجاني مؤقتًا. حاول بعد دقيقة.', code: 'rate_limit' });
     if (err.status === 400 || err.status === 403) return json(502, { error: 'تعذر الاتصال بنموذج الذكاء الاصطناعي. تأكد من المفتاح واسم النموذج.', code: 'gemini_config' });
     return json(502, { error: 'نموذج الذكاء الاصطناعي لم يرد. حاول مرة ثانية.', code: 'gemini_error' });
