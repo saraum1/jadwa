@@ -15,27 +15,31 @@ import { opportunityService } from "../opportunities/services/opportunityService
 import { useAuth } from "../../shared/lib/authContext.jsx";
 import { computeAvatarInitial, formatChange } from "../../shared/types/dto.js";
 import { openAskJadwa } from "../ai/client.js";
+import { usePeriodFacts, getSourceLabel } from "../ai/usePeriodFacts.js";
 
 function Chart({ m }) {
   const xs = [55, 220, 385, 550],
     y = (v) => 145 - (v / 16000) * 125,
     path = (v) =>
-      v.map((n, i) => (i ? "L" : "M") + xs[i] + " " + y(n)).join(" "),
+      v ? v.map((n, i) => (i ? "L" : "M") + xs[i] + " " + y(n)).join(" ") : "",
     labels = [
       "الأسبوع الأول",
       "الأسبوع الثاني",
       "الأسبوع الثالث",
       "الأسبوع الرابع",
     ];
+  const hasCosts = Array.isArray(m.costs) && m.costs.some((c) => typeof c === "number" && Number.isFinite(c));
   return (
     <svg
       className="chart-svg"
       viewBox="0 0 600 180"
       role="img"
       aria-label={
-        "المبيعات والتكاليف الأسبوعية لشهر " +
-        m.name +
-        "، جميع قيم المبيعات أعلى من التكاليف. اضغط عرض الأرقام للتفاصيل."
+        hasCosts
+          ? "المبيعات والتكاليف الأسبوعية لشهر " +
+            m.name +
+            "، جميع قيم المبيعات أعلى من التكاليف. اضغط عرض الأرقام للتفاصيل."
+          : "المبيعات الأسبوعية لشهر " + m.name + ". اضغط عرض الأرقام للتفاصيل."
       }
       dir="ltr"
     >
@@ -61,7 +65,7 @@ function Chart({ m }) {
         </g>
       ))}
       <path d={path(m.sales) + " L550 145 L55 145Z"} fill="url(#fillBlue)" />
-      <path d={path(m.costs)} fill="none" stroke="#25be98" strokeWidth="2.3" />
+      {hasCosts && <path d={path(m.costs)} fill="none" stroke="#25be98" strokeWidth="2.3" />}
       <path d={path(m.sales)} fill="none" stroke="#2563eb" strokeWidth="2.5" />
       {m.sales.map((v, i) => (
         <g key={i}>
@@ -77,19 +81,22 @@ function Chart({ m }) {
               {labels[i] +
                 ": مبيعات " +
                 number(v) +
-                " ريال، تكاليف " +
-                number(m.costs[i]) +
-                " ريال"}
+                " ريال" +
+                (hasCosts && m.costs?.[i] != null
+                  ? "، تكاليف " + number(m.costs[i]) + " ريال"
+                  : "")}
             </title>
           </circle>
-          <circle
-            cx={xs[i]}
-            cy={y(m.costs[i])}
-            r="3"
-            fill="#25be98"
-            stroke="white"
-            strokeWidth="1.5"
-          />
+          {hasCosts && m.costs?.[i] != null && (
+            <circle
+              cx={xs[i]}
+              cy={y(m.costs[i])}
+              r="3"
+              fill="#25be98"
+              stroke="white"
+              strokeWidth="1.5"
+            />
+          )}
           <text x={xs[i]} y="171" textAnchor="middle">
             {labels[i]}
           </text>
@@ -108,6 +115,8 @@ export default function DashboardPage() {
       ? params.get("month")
       : "sep",
     workspace = useWorkspace(month, "dashboard");
+
+  const { facts, source, loading: factsLoading } = usePeriodFacts(month);
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -143,7 +152,61 @@ export default function DashboardPage() {
     };
   }, [month, authLoading, user, isGuest]);
 
-  const m = metricData || {
+  const isFactsFiles = facts && facts.source === "files";
+
+  const fileMetricData = isFactsFiles
+    ? {
+        name: month === "aug" ? "أغسطس" : "سبتمبر",
+        revenue: facts.summary?.revenue ?? 0,
+        cost: facts.summary?.totalCost ?? 0,
+        profit: facts.summary?.profit ?? 0,
+        saving: facts.losses?.expectedSaving ?? 0,
+        sales: facts.weeklySales || [0, 0, 0, 0],
+        costs: null,
+        changes: [
+          facts.changes?.revenuePct != null
+            ? (facts.changes.revenuePct >= 0 ? "+" : "") + facts.changes.revenuePct + "٪"
+            : "—",
+          facts.changes?.totalCostPct != null
+            ? (facts.changes.totalCostPct >= 0 ? "+" : "") + facts.changes.totalCostPct + "٪"
+            : "—",
+          facts.changes?.profitPct != null
+            ? (facts.changes.profitPct >= 0 ? "+" : "") + facts.changes.profitPct + "٪"
+            : "—",
+        ],
+        amounts: facts.decisions.slice(0, 3).map((d) => d.saving),
+      }
+    : null;
+
+  const fileOpportunities = isFactsFiles
+    ? facts.decisions.slice(0, 3).map((d) => ({
+        id: d.id,
+        title: d.title,
+        text: d.cause || d.problem,
+        potentialSaving: d.saving,
+        category: d.categoryName,
+        icon:
+          d.category === "duplicate_subscription"
+            ? "wallet"
+            : d.category === "cost_increase"
+              ? "cart"
+              : "box",
+        accent:
+          d.category === "losing_product"
+            ? "#ef4444"
+            : d.category === "duplicate_subscription"
+              ? "#e3b130"
+              : "#2563eb",
+        tint:
+          d.category === "losing_product"
+            ? "#fef2f2"
+            : d.category === "duplicate_subscription"
+              ? "#fefce8"
+              : "#eff6ff",
+      }))
+    : null;
+
+  const m = fileMetricData || metricData || {
     name: month === "aug" ? "أغسطس" : "سبتمبر",
     revenue: 0,
     cost: 0,
@@ -154,6 +217,9 @@ export default function DashboardPage() {
     changes: ["٠٪", "٠٪", "٠٪"],
     amounts: [0, 0, 0],
   };
+
+  const displayedOpportunities = fileOpportunities || opportunitiesList;
+  const pageLoading = isFactsFiles ? factsLoading : (loading || factsLoading);
 
   const displayName = user?.profile?.fullName || (isGuest ? "الشيماء" : (user?.email?.split("@")[0] || "مستخدم"));
   const avatarChar = isGuest
@@ -308,7 +374,11 @@ export default function DashboardPage() {
                   <Money value={v} />
                 </td>
                 <td>
-                  <Money value={m.costs[i]} />
+                  {m.costs && m.costs[i] != null ? (
+                    <Money value={m.costs[i]} />
+                  ) : (
+                    "—"
+                  )}
                 </td>
               </tr>
             ))}
@@ -318,7 +388,7 @@ export default function DashboardPage() {
                 <Money value={m.revenue} />
               </th>
               <th>
-                <Money value={m.cost} />
+                {m.cost != null ? <Money value={m.cost} /> : "—"}
               </th>
             </tr>
           </tbody>
@@ -334,7 +404,7 @@ export default function DashboardPage() {
 
   const slots = {
     "mini-avatar": avatarChar,
-    "demo-label": isGuest ? "بيانات توضيحية" : "بيانات المنشأة",
+    "demo-label": getSourceLabel(facts?.source || (isGuest ? "demo" : "database")),
     greeting: (
       <>
         {"صباح الخير، " + displayName + " "}
@@ -367,19 +437,19 @@ export default function DashboardPage() {
         <span>خروج</span>
       </button>
     ),
-    "period-footer": (isGuest ? "نسخة تجريبية · " : "فترة ") + m.name + " ٢٠٢٦",
+    "period-footer": (facts?.source === "files" ? "ملفات " : (isGuest ? "نسخة تجريبية · " : "فترة ")) + m.name + " ٢٠٢٦",
     ...Object.fromEntries(
       ["revenue", "cost", "profit", "saving"].map((k) => [k, number(m[k] || 0)]),
     ),
     ...Object.fromEntries(
       ["revenue", "cost", "profit"].map((k, i) => [
         k + "-change",
-        formatChange(m.changes?.[i]) || "",
+        typeof m.changes?.[i] === "string" ? m.changes[i] : (formatChange(m.changes?.[i]) || "—"),
       ]),
     ),
     "chart-wrap": <Chart m={m} />,
     "loading-status":
-      (loading ? "جاري تحميل بيانات " : "تم تحميل بيانات ") + m.name,
+      (pageLoading ? "جاري تحميل بيانات " : "تم تحميل بيانات ") + m.name,
     "dialog-eyebrow":
       dialog === "meeting"
         ? "اجتماع مع جدوى"
@@ -387,14 +457,14 @@ export default function DashboardPage() {
           ? "اسأل جدوى · معاينة"
           : "أداء المنشأة",
     "dialog-content": content,
-    "opportunity-grid": opportunitiesList.length > 0 ? opportunitiesList.map((o, i) => {
+    "opportunity-grid": displayedOpportunities.length > 0 ? displayedOpportunities.map((o, i) => {
       const savingAmt = o.potentialSaving ?? m.amounts?.[i] ?? 0;
       return (
         <article
-          key={i}
-          className={"opportunity-card" + (loading ? " is-loading" : "")}
+          key={o.id || i}
+          className={"opportunity-card" + (pageLoading ? " is-loading" : "")}
           style={{ "--accent": o.accent, "--tint": o.tint }}
-          inert={loading}
+          inert={pageLoading}
         >
           <div className="opportunity-top">
             <span className="category">{o.category}</span>
@@ -411,19 +481,19 @@ export default function DashboardPage() {
             </b>
           </div>
           <button
-            data-opportunity={i}
+            data-opportunity={o.id || i}
             aria-label={"راجع تفاصيل: " + o.title}
             onClick={() =>
-              go("opportunities.html?month=" + month + "&opportunity=" + i)
+              go("opportunities.html?month=" + month + "&opportunity=" + (o.id ? encodeURIComponent(o.id) : i))
             }
           >
             راجع التفاصيل
           </button>
-          {loading && <Skeleton />}
+          {pageLoading && <Skeleton />}
         </article>
       );
     }) : (
-      !loading ? (
+      !pageLoading ? (
         <div style={{ gridColumn: "1 / -1", padding: "32px", textAlign: "center", color: "#64748b", background: "white", borderRadius: "12px", border: "1px solid #e9edf3" }}>
           <p style={{ margin: "0 0 6px", fontWeight: "500", color: "#334155" }}>لا توجد فرص مسجلة حاليًا لهذه الفترة</p>
           <small style={{ color: "#94a3b8" }}>يمكنك إضافة ملفات المبيعات والمصروفات من مركز البيانات لبدء التحليل واكتشاف فرص التوفير.</small>
@@ -435,7 +505,7 @@ export default function DashboardPage() {
   return (
     <View
       active="dashboard"
-      loading={loading}
+      loading={pageLoading}
       slots={slots}
       refs={workspace.refs}
       bindings={{
@@ -449,9 +519,9 @@ export default function DashboardPage() {
         "chart-data": { onClick: () => open("chart") },
         "detail-dialog": { open: !!dialog, onClose: close },
         "close-dialog": { onClick: close },
-        ".metrics": { "aria-busy": loading },
-        ".opportunity-grid": { "aria-busy": loading },
-        ".bottom-grid": { "aria-busy": loading },
+        ".metrics": { "aria-busy": pageLoading },
+        ".opportunity-grid": { "aria-busy": pageLoading },
+        ".bottom-grid": { "aria-busy": pageLoading },
       }}
     />
   );

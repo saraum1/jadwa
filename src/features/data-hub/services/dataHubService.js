@@ -2,6 +2,7 @@ import { supabase, isSupabaseConfigured } from "../../../shared/lib/supabase.js"
 import { JadwaSession } from "../../../shared/lib/session.js";
 import { toDataHubFileDTO } from "../../../shared/types/dto.js";
 import { authService } from "../../auth/services/authService.js";
+import { invalidateFactsCache } from "../../ai/usePeriodFacts.js";
 
 export const dataHubService = {
   /**
@@ -84,9 +85,11 @@ export const dataHubService = {
         console.warn("[Data Hub Service] Supabase insert failed:", error.message);
         return { saved: false, reason: error.message };
       }
+      invalidateFactsCache(file.result?.period);
       return { saved: true };
     } catch (err) {
       console.warn("[Data Hub Service] Error persisting to Supabase:", err);
+      invalidateFactsCache(file.result?.period);
       return { saved: false, reason: err.message };
     }
   },
@@ -101,6 +104,7 @@ export const dataHubService = {
       const { error } = await supabase.from("data_hub_files").delete().eq("id", fileId);
       if (error) console.warn("[Data Hub Service] Error deleting remote file:", error.message);
     }
+    invalidateFactsCache();
   },
 };
 
