@@ -199,12 +199,12 @@ export default function AskJadwa() {
         ) : facts ? (
           <div className="jai-msg jai-model jai-intro">
             <Rich
-              text={`أهلًا، أنا جدوى. راجعت بيانات ${facts.periodName}.\nالخسارة الشهرية المقدرة: **${money(facts.losses.total)} ريال** من ${facts.decisions.length} أسباب، والتوفير المتوقع **${money(facts.losses.expectedSaving)} ريال**.\nاسأليني أي شي عنها.`}
+              text={`أهلًا، أنا جدوى. راجعت بيانات ${facts.periodName}.\nالخسارة الشهرية المقدرة: **${money(facts.losses.total)} ريال** من ${facts.decisions.length} أسباب، والتوفير المتوقع **${money(facts.losses.expectedSaving)} ريال**.\nاسألني أي شي عنها.`}
             />
           </div>
         ) : (
           <div className="jai-msg jai-model jai-error">
-            <p>لا توجد بيانات لهذه الفترة بعد. أضيفي ملفاتك من مركز البيانات ثم اسأليني.</p>
+            <p>لا توجد بيانات لهذه الفترة بعد. أضف ملفاتك من مركز البيانات ثم اسألني.</p>
           </div>
         )}
         {history.map((t, i) => (
@@ -262,7 +262,7 @@ export default function AskJadwa() {
               send(input);
             }
           }}
-          placeholder="اسألي عن أرباحك، خسائرك، أو أي صنف…"
+          placeholder="اسأل عن أرباحك، خسائرك، أو أي صنف…"
           aria-label="سؤالك"
         />
         <button type="submit" aria-label="إرسال" disabled={!!busy.current || loading || !facts}>

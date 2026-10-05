@@ -240,7 +240,7 @@ export default function DashboardPage() {
 
   const firstSaving = m.amounts?.[0] || 1200;
   const answers = {
-    saving: `ابدئي بمراجعة هدر المكونات: هو أكبر فرصة في هذا المثال، بوفر محتمل ${number(firstSaving)} ⃁ من أصل ${number(m.saving)} ⃁. راجعي الاستهلاك الفعلي قبل تعديل كميات الشراء.`,
+    saving: `ابدأ بمراجعة هدر المكونات: هو أكبر فرصة في هذا المثال، بوفر محتمل ${number(firstSaving)} ⃁ من أصل ${number(m.saving)} ⃁. راجع الاستهلاك الفعلي قبل تعديل كميات الشراء.`,
     profit: `صافي الربح في عينة ${m.name} = المبيعات ${number(m.revenue)} ⃁ − إجمالي التكاليف ${number(m.cost)} ⃁ = ${number(m.profit)} ⃁. تشمل التكاليف تكلفة المبيعات والمصروفات والهدر مرة واحدة.`,
     sources:
       "التحليل في هذه النسخة مبني على بيانات المبيعات والتكاليف والمخزون والهدر مع الربط بقاعدة بيانات السحابة.",
@@ -251,10 +251,10 @@ export default function DashboardPage() {
     content = (
       <>
         <h2 id="dialog-title" className="dialog-title">
-          كيف تحبّين نبدأ الاجتماع؟
+          كيف تحب نبدأ الاجتماع؟
         </h2>
         <p className="dialog-description">
-          أضيفي ملفات جديدة قبل الدخول، أو تابعي بالبيانات المتاحة للفترة
+          أضف ملفات جديدة قبل الدخول، أو تابع بالبيانات المتاحة للفترة
           المحددة.
         </p>
         <div className="meeting-choices">
@@ -269,7 +269,7 @@ export default function DashboardPage() {
             <span>
               <strong>إضافة ملفات قبل الاجتماع</strong>
               <small>
-                افتحي مركز البيانات لرفع ملفات CSV ومراجعتها، ثم انتقلي
+                افتح مركز البيانات لرفع ملفات CSV ومراجعتها، ثم انتقل
                 للاجتماع.
               </small>
             </span>
@@ -325,7 +325,7 @@ export default function DashboardPage() {
           ما الذي تودّين معرفته؟
         </h2>
         <p className="dialog-description">
-          اختاري سؤالًا لتجربة طريقة عرض الإجابة. الإجابات هنا معدّة من بيانات
+          اختر سؤالًا لتجربة طريقة عرض الإجابة. الإجابات هنا معدّة من بيانات
           المثال؛ لا يوجد اتصال بنموذج ذكاء اصطناعي بعد.
         </p>
         {[
@@ -406,7 +406,7 @@ export default function DashboardPage() {
     "demo-label": getSourceLabel(facts?.source || (isGuest ? "demo" : "database")),
     greeting: (
       <>
-        {"صباح الخير، " + displayName + " "}
+        {(new Date().getHours() < 12 ? "صباح الخير، " : "مساء الخير، ") + displayName.split(" ")[0] + " "}
         <span className="greeting-dot"></span>
       </>
     ),
@@ -436,7 +436,7 @@ export default function DashboardPage() {
         <span>خروج</span>
       </button>
     ),
-    "period-footer": (facts?.source === "files" ? "ملفات " : (isGuest ? "نسخة تجريبية · " : "فترة ")) + m.name + " ٢٠٢٦",
+    "period-footer": (facts?.source === "files" ? "ملفات " : (isGuest ? "بيانات توضيحية · " : "فترة ")) + m.name + " ٢٠٢٦",
     ...Object.fromEntries(
       ["revenue", "cost", "profit", "saving"].map((k) => [k, number(m[k] || 0)]),
     ),

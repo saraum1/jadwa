@@ -28,9 +28,9 @@ async function failure(res) {
   if (res.status === 401) {
     try {
       const j = await res.json();
-      return new AIError(j.error || "سجّلي دخولك أولًا.", "auth");
+      return new AIError(j.error || "سجّل دخولك أولًا.", "auth");
     } catch {
-      return new AIError("سجّلي دخولك أولًا.", "auth");
+      return new AIError("سجّل دخولك أولًا.", "auth");
     }
   }
   if ([404, 405, 501].includes(res.status))
@@ -45,7 +45,7 @@ async function failure(res) {
 
 /** يرجع النص كاملًا، ويستدعي onToken بالنص المتراكم أثناء الوصول. في meeting_close يرجع {spoken, actions}. */
 export async function ask({ facts, mode = "chat", message = "", history = [], previousMeeting, onToken, signal } = {}) {
-  if (!facts) throw new AIError("لا توجد بيانات لهذه الفترة. أضيفي ملفاتك من مركز البيانات.", "no_data");
+  if (!facts) throw new AIError("لا توجد بيانات لهذه الفترة. أضف ملفاتك من مركز البيانات.", "no_data");
   let res;
   try {
     res = await fetch(API.chat, {
@@ -69,7 +69,7 @@ export async function ask({ facts, mode = "chat", message = "", history = [], pr
     text += decoder.decode(value, { stream: true });
     onToken?.(text);
   }
-  if (!text.trim()) throw new AIError("لم يصل رد. حاولي مرة ثانية.", "empty");
+  if (!text.trim()) throw new AIError("لم يصل رد. حاول مرة ثانية.", "empty");
   return text.trim();
 }
 

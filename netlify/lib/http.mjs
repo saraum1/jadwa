@@ -24,7 +24,7 @@ export async function readBody(req, maxBytes) {
 export function errorResponse(err) {
   if (err instanceof GeminiError) {
     console.error('Gemini error', err.status, err.message);
-    if (err.status === 503 || err.status === 500) return json(503, { error: 'سيرفرات Google مضغوطة الحين. حاولي بعد دقيقة.', code: 'overloaded' });
+    if (err.status === 503 || err.status === 500) return json(503, { error: 'سيرفرات Google مضغوطة الحين. حاول بعد دقيقة.', code: 'overloaded' });
     if (err.status === 429) return json(429, { error: 'وصلنا لحد الاستخدام المجاني مؤقتًا. حاول بعد دقيقة.', code: 'rate_limit' });
     if (err.status === 400 || err.status === 403) return json(502, { error: 'تعذر الاتصال بنموذج الذكاء الاصطناعي. تأكد من المفتاح واسم النموذج.', code: 'gemini_config' });
     return json(502, { error: 'نموذج الذكاء الاصطناعي لم يرد. حاول مرة ثانية.', code: 'gemini_error' });
@@ -43,18 +43,18 @@ async function requireUser(req) {
   // بدون إعداد Supabase على الخادم (تشغيل محلي) لا نطلب تسجيل دخول.
   if (!SUPABASE_URL() || !SUPABASE_KEY()) return null;
   const token = (req.headers.get('authorization') || '').replace(/^Bearer\s+/i, '').trim();
-  if (!token) throw Object.assign(new Error('سجّلي دخولك أولًا لاستخدام جدوى.'), { status: 401, code: 'auth' });
+  if (!token) throw Object.assign(new Error('سجّل دخولك أولًا لاستخدام جدوى.'), { status: 401, code: 'auth' });
   let user = tokenCache.get(token);
   if (!user || user.until < Date.now()) {
     const res = await fetch(`${SUPABASE_URL()}/auth/v1/user`, { headers: { apikey: SUPABASE_KEY(), authorization: `Bearer ${token}` } });
-    if (!res.ok) throw Object.assign(new Error('انتهت جلستك. سجّلي دخولك مرة ثانية.'), { status: 401, code: 'auth' });
+    if (!res.ok) throw Object.assign(new Error('انتهت جلستك. سجّل دخولك مرة ثانية.'), { status: 401, code: 'auth' });
     const data = await res.json();
     user = { id: data.id, until: Date.now() + 5 * 60_000 };
     tokenCache.set(token, user);
     if (tokenCache.size > 500) tokenCache.delete(tokenCache.keys().next().value);
   }
   const now = Date.now(), recent = (hits.get(user.id) || []).filter((t) => now - t < 60_000);
-  if (recent.length >= LIMIT_PER_MINUTE) throw Object.assign(new Error('طلبات كثيرة خلال دقيقة. خذي نفس وحاولي بعد قليل.'), { status: 429, code: 'user_rate_limit' });
+  if (recent.length >= LIMIT_PER_MINUTE) throw Object.assign(new Error('طلبات كثيرة خلال دقيقة. خذ نفس وحاول بعد قليل.'), { status: 429, code: 'user_rate_limit' });
   recent.push(now);
   hits.set(user.id, recent);
   return user;

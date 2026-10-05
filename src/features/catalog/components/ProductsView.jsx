@@ -459,7 +459,7 @@ export default function ProductsView({
                 className={"dialog-eyebrow"}
                 {...bindings[".dialog-eyebrow"]}
               >
-                {"جدوى · نسخة تجريبية"}
+                {"جدوى"}
               </span>
               <button
                 className={"icon-button"}

@@ -21,7 +21,7 @@ export function Badge({ result: r }) {
   if (!r) return null;
   return (
     <span className={"hub-badge " + (warnCount(r) ? "review" : "ready")}>
-      {warnCount(r) ? "يحتاج مراجعة ربط" : "جاهز للربط"}
+      {warnCount(r) ? "يحتاج مراجعة" : "تم الرفع ✓"}
     </span>
   );
 }

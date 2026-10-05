@@ -647,7 +647,7 @@ export default function DashboardView({
               {" قرارات أوضح، رؤية أذكى"}
             </span>
             <span>
-              {slots["period-footer"] || "نسخة تجريبية · سبتمبر ٢٠٢٦"}
+              {slots["period-footer"] || "سبتمبر ٢٠٢٦"}
             </span>
           </footer>
         </div>

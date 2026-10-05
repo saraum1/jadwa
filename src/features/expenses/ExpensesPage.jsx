@@ -320,7 +320,7 @@ export default function ExpensesPage() {
       </button>
     ),
     "distribution-period": m.name + " ٢٠٢٦",
-    "period-footer": (facts?.source === "files" ? "ملفات " : isGuest ? "نسخة تجريبية · " : "فترة ") + m.name + " ٢٠٢٦",
+    "period-footer": (facts?.source === "files" ? "ملفات " : isGuest ? "بيانات توضيحية · " : "فترة ") + m.name + " ٢٠٢٦",
     "expense-bars": categoriesTotal
       .filter((c) => c.total > 0)
       .map((c) => (
@@ -381,7 +381,7 @@ export default function ExpensesPage() {
       <>
         <Icon name="wallet" />
         <h3>لا توجد نتائج مطابقة</h3>
-        <p>جرّبي تغيير البحث أو إزالة الفلاتر.</p>
+        <p>جرّب تغيير البحث أو إزالة الفلاتر.</p>
         <button className="primary-button" onClick={reset}>
           مسح الفلاتر
         </button>

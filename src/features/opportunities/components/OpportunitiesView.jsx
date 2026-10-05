@@ -114,7 +114,7 @@ export default function OpportunitiesView({
             </svg>
             <span>
               {
-                "المتابعة تجريبية لهذه الجلسة فقط؛ تُعاد عند تحديث الصفحة أو مغادرتها."
+                "حالة المتابعة تُحفظ في هذا المتصفح."
               }
             </span>
           </div>
@@ -193,7 +193,7 @@ export default function OpportunitiesView({
                 </strong>
                 <span>{"فرص"}</span>
               </div>
-              <p>{"ابدئي بالفرصة الأعلى أثرًا"}</p>
+              <p>{"ابدأ بالفرصة الأعلى أثرًا"}</p>
               {loading && <Skeleton />}
             </article>
             <article
@@ -271,7 +271,7 @@ export default function OpportunitiesView({
                     </>
                   )}
                 </h2>
-                <p>{"راجعي الأدلة، ثم اختاري الإجراء المناسب لمنشأتك."}</p>
+                <p>{"راجع الأدلة، ثم اختر الإجراء المناسب لمنشأتك."}</p>
               </div>
               <span className={"subtle-info"} {...bindings[".subtle-info"]}>
                 <svg>
@@ -365,7 +365,7 @@ export default function OpportunitiesView({
               </svg>
               <p>
                 {
-                  "التقديرات تعتمد على افتراضات موضحة داخل كل فرصة. راجعيها قبل اعتماد الإجراء."
+                  "التقديرات تعتمد على افتراضات موضحة داخل كل فرصة. راجعها قبل اعتماد الإجراء."
                 }
               </p>
             </div>
@@ -389,7 +389,7 @@ export default function OpportunitiesView({
               {Object.hasOwn(slots, "period-footer") ? (
                 slots["period-footer"]
               ) : (
-                <>{"نسخة تجريبية · سبتمبر ٢٠٢٦"}</>
+                <>{"سبتمبر ٢٠٢٦"}</>
               )}
             </span>
           </footer>

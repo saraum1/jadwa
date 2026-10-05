@@ -647,7 +647,7 @@ export default function OpportunitiesPage() {
       ? number(waitingCount) + " بانتظار قياس الأثر"
       : "لا توجد فرص بانتظار قياس الأثر",
     "result-count": number(ids.length) + " من " + number(displayedOpportunities.length),
-    "period-footer": (facts?.source === "files" ? "ملفات " : (isGuest ? "نسخة تجريبية · " : "فترة ")) + m.name + " ٢٠٢٦",
+    "period-footer": (facts?.source === "files" ? "ملفات " : (isGuest ? "بيانات توضيحية · " : "فترة ")) + m.name + " ٢٠٢٦",
     "opportunity-list": ids.length > 0 ? ids.map((i) => {
       const o = displayedOpportunities[i],
         s = isFactsFiles ? (workflowMap[o.id] || { status: "new" }) : (states[i] || { status: "new" }),

@@ -54,7 +54,7 @@ export default function DataHubView({
           </div>
           <div className={"topbar-left"} {...bindings[".topbar-left"]}>
             <span className={"demo-label"} {...bindings[".demo-label"]}>
-              {"بيانات التحليلات: تجريبية"}
+              {"مركز البيانات"}
             </span>
             <span className={"mini-avatar"} {...bindings[".mini-avatar"]}>
               {"ش"}
@@ -135,7 +135,7 @@ export default function DataHubView({
                     {Object.hasOwn(slots, "meeting-prep-summary") ? (
                       slots["meeting-prep-summary"]
                     ) : (
-                      <>{"أضيفي ملفًا وراجعيه، ثم انتقلي إلى الغرفة."}</>
+                      <>{"أضف ملفًا وراجعه، ثم انتقل إلى الغرفة."}</>
                     )}
                   </p>
                 </div>
@@ -178,10 +178,10 @@ export default function DataHubView({
               <use href={"#info"} />
             </svg>
             <div>
-              <b>{"ملفاتك قيد التجهيز، والتحليلات ما زالت تجريبية"}</b>
+              <b>{"ملفاتك محفوظة في حسابك، وجدوى يحللها"}</b>
               <p>
                 {
-                  "تُقرأ الملفات على جهازك دون رفعها لخادم. تُحفظ الملفات المجهزة مؤقتًا في هذا التبويب لتنتقلي بها إلى الاجتماع، وتبقى عند تحديث الصفحة. ربطها بالتحليلات والحفظ الدائم غير متاحين بعد."
+                  "ارفع ملفًا لكل مصدر وشهر. جدوى يحلل ملفاتك ويجاوب منها في «اسأل جدوى» والاجتماع."
                 }
               </p>
             </div>
@@ -371,7 +371,7 @@ export default function DataHubView({
               </span>
               {" قرارات أوضح، رؤية أذكى"}
             </span>
-            <span>{"تجهيز الملفات · نسخة تجريبية"}</span>
+            <span>{"مركز البيانات"}</span>
           </footer>
         </div>
       </main>
@@ -771,7 +771,7 @@ export default function DataHubView({
                   </svg>
                   <p>
                     {
-                      "التأكيد يجهّز الملف للربط فقط. أرقام الرئيسية والفرص والمنتجات والمصروفات لن تتغير."
+                      "بعد الحفظ يحلل جدوى الملف ويجاوب منه في «اسأل جدوى» والاجتماع."
                     }
                   </p>
                 </div>

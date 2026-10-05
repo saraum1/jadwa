@@ -17,9 +17,9 @@ const STATES = {
   idle: ["جاهز. جدوى راجع أرقامك وينتظرك.", ""],
   loading: ["جدوى يراجع أرقامك…", "thinking"],
   thinking: ["جدوى يفكر…", "thinking"],
-  speaking: ["جدوى يتكلم… (اضغطي «تكلّمي» لمقاطعته)", "speaking"],
-  listening: ["أسمعك… تكلّمي الآن", "listening"],
-  waiting: [Recognition ? "اضغطي «تكلّمي» واسألي جدوى" : "اكتبي سؤالك لجدوى", ""],
+  speaking: ["جدوى يتكلم… (اضغط «تكلّم» لمقاطعته)", "speaking"],
+  listening: ["أسمعك… تكلّم الآن", "listening"],
+  waiting: [Recognition ? "اضغط «تكلّم» واسأل جدوى" : "اكتب سؤالك لجدوى", ""],
   closing: ["جدوى يجهز خطة العمل…", "thinking"],
   done: ["انتهى الاجتماع. خطة العمل تحت.", ""],
 };
@@ -245,7 +245,7 @@ export function useMeetingVoice({ period, getRoom }) {
       } else updateLast({ text: lastSpoken });
     };
     rec.onerror = (e) => {
-      if (e.error === "not-allowed" || e.error === "service-not-allowed") setNote("اسمحي للمتصفح باستخدام الميكروفون، أو اكتبي سؤالك.");
+      if (e.error === "not-allowed" || e.error === "service-not-allowed") setNote("اسمح للمتصفح باستخدام الميكروفون، أو اكتب سؤالك.");
     };
     rec.onend = () => {
       if (r.current.recognizer === rec) r.current.recognizer = null;
@@ -303,7 +303,7 @@ export function useMeetingVoice({ period, getRoom }) {
   async function start() {
     setPlan(null);
     setLines([]);
-    setNote(Recognition ? "" : "متصفحك لا يدعم تحويل الكلام إلى نص؛ اكتبي أسئلتك وجدوى يرد بالصوت. (الميكروفون يعمل في Chrome وSafari وEdge)");
+    setNote(Recognition ? "" : "متصفحك لا يدعم تحويل الكلام إلى نص؛ اكتب أسئلتك وجدوى يرد بالصوت. (الميكروفون يعمل في Chrome وSafari وEdge)");
     r.current.history = [];
     r.current.active = true;
     setActive(true);
@@ -316,7 +316,7 @@ export function useMeetingVoice({ period, getRoom }) {
       r.current.facts = await loadFacts(period).catch(() => null);
     }
     if (!r.current.facts) {
-      pushLine({ role: "model", text: "لا توجد بيانات لهذه الفترة بعد. أضيفي ملفاتك من مركز البيانات ثم ادخلي الاجتماع.", error: true });
+      pushLine({ role: "model", text: "لا توجد بيانات لهذه الفترة بعد. أضف ملفاتك من مركز البيانات ثم ادخلي الاجتماع.", error: true });
       setPhase("waiting");
       return;
     }
@@ -393,22 +393,14 @@ export function VoicePanel({ voice }) {
           <span role="status">{voice.status}</span>
         </div>
         <div className="voice-controls">
-          <button
-            type="button"
-            className="voice-mode-toggle"
-            title={voice.voiceMode === "fast" ? "وضع الصوت الفوري: استجابة سريعة جداً بدون انتظار الخادم" : "وضع الاستوديو: نبرة صوت طبيعية فائقة الجودة من Gemini"}
-            onClick={() => voice.setVoiceMode(voice.voiceMode === "fast" ? "studio" : "fast")}
-          >
-            {voice.voiceMode === "fast" ? "⚡ صوت فوري" : "🎙 استوديو"}
-          </button>
           {!voice.active && voice.phase !== "closing" && (
             <button className="voice-start" onClick={voice.start} disabled={voice.phase === "loading"}>
-              {voice.plan ? "اجتماع جديد" : "ابدئي الاجتماع"}
+              {voice.plan ? "اجتماع جديد" : "ابدأ الاجتماع"}
             </button>
           )}
           {voice.active && voice.canListen && (
             <button className="voice-mic" aria-pressed={voice.phase === "listening"} disabled={busy} onClick={voice.toggleMic}>
-              <span aria-hidden="true">🎙</span> {voice.phase === "listening" ? "إرسال الآن ⏎" : "تكلّمي"}
+              <span aria-hidden="true">🎙</span> {voice.phase === "listening" ? "إنهاء الكلام" : "تكلّم"}
             </button>
           )}
           {voice.active && (
@@ -427,7 +419,7 @@ export function VoicePanel({ voice }) {
             setText("");
           }}
         >
-          <input value={text} onChange={(e) => setText(e.target.value)} maxLength={500} autoComplete="off" placeholder="أو اكتبي سؤالك هنا…" aria-label="اكتبي سؤالك" />
+          <input value={text} onChange={(e) => setText(e.target.value)} maxLength={500} autoComplete="off" placeholder="أو اكتب سؤالك هنا…" aria-label="اكتب سؤالك" />
           <button type="submit" disabled={busy}>
             إرسال
           </button>
@@ -437,7 +429,7 @@ export function VoicePanel({ voice }) {
         <div className="voice-transcript" ref={list} aria-live="polite">
           {voice.lines.map((l, i) => (
             <div key={i} className={"voice-line voice-" + l.role + (l.error ? " voice-error" : "")}>
-              <b>{l.role === "user" ? "أنتِ" : "جدوى"}</b>
+              <b>{l.role === "user" ? "أنت" : "جدوى"}</b>
               <p>{l.text}</p>
             </div>
           ))}

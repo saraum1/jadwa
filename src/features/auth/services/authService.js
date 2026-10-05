@@ -308,7 +308,7 @@ export const authService = {
    */
   async resetPassword(email) {
     if (!isSupabaseConfigured || !supabase) {
-      return { success: true, message: "تم إرسال رابط استعادة كلمة المرور تجريبيًا." };
+      return { success: true, message: "تم إرسال رابط استعادة كلمة المرور." };
     }
 
     try {

@@ -273,16 +273,15 @@ export default function DataHubPage() {
           .saveFile(f)
           .then((r) => {
             if (!isGuest && r && !r.saved)
-              showToast("تجهّز الملف في هذا التبويب، لكن تعذر حفظه في حسابك. حاولي مرة ثانية.");
+              showToast("تجهّز الملف في هذا التبويب، لكن تعذر حفظه في حسابك. حاول مرة ثانية.");
           })
           .catch(() => {});
         setFiles(nextFiles);
         setPeriod(f.result.period);
         closeImport();
         showToast(
-          "تم تجهيز الملف " +
-            (warnCount(f.result) ? "مع ملاحظات للمراجعة" : "للربط") +
-            "؛ التحليلات الحالية لم تتغير.",
+          "تم حفظ الملف" +
+            (warnCount(f.result) ? " مع ملاحظات للمراجعة." : "."),
         );
       }
     } catch (e) {
@@ -364,7 +363,7 @@ export default function DataHubPage() {
         " ملفات مجهزة لفترة " +
         monthName(activePeriod) +
         ". يمكنك الدخول أو إضافة ملف آخر."
-      : "أضيفي ملفًا لهذه الفترة وراجعيه، ثم انتقلي إلى الغرفة.",
+      : "أضف ملفًا لهذه الفترة وراجعه، ثم انتقل إلى الغرفة.",
     "source-count": number(shown.length) + " من ٤",
     "review-count": number(review.length) + " ملفات",
     "last-prepared": shown.length
@@ -464,7 +463,7 @@ export default function DataHubPage() {
                   </button>
                   <small>
                     {f.origin === "demo" ? "عينة توضيحية" : "ملف مرفوع"} ·{" "}
-                    {isGuest ? "جلسة تجريبية" : "محفوظ في حسابك"}
+                    {isGuest ? "حساب زائر" : "محفوظ في حسابك"}
                   </small>
                 </div>
               </td>
@@ -587,7 +586,7 @@ export default function DataHubPage() {
         <span>خروج</span>
       </button>
     ),
-    "period-footer": (isGuest ? "نسخة تجريبية · " : "فترة ") + monthName(activePeriod) + " ٢٠٢٦",
+    "period-footer": (isGuest ? "بيانات توضيحية · " : "فترة ") + monthName(activePeriod),
     "hub-status": toast,
     "hub-toast": toast,
   };

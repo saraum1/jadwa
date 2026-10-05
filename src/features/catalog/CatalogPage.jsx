@@ -402,12 +402,12 @@ export default function CatalogPage() {
     ),
     "catalog-basis":
       tab === "products"
-        ? (isFactsFiles ? "الهامش المستهدف: ٢٠٪ · محسوب من ملفاتك" : "الهامش المستهدف: ٢٠٪ · افتراض الديمو")
+        ? (isFactsFiles ? "الهامش المستهدف: ٢٠٪ · محسوب من ملفاتك" : "الهامش المستهدف: ٢٠٪")
         : "المتاح في نهاية " + months[month].name,
     "catalog-footnote":
       tab === "products"
         ? "تكلفة المبيعات هنا تخص الوحدات المباعة فقط. انخفاض الهامش لا يعني خسارة، وصافي ربح المنشأة يشمل مصروفات أخرى."
-        : "المخزون الزائد مال مجمّد، وليس خسارة محققة. تقدير التغطية لا يتنبأ بتغيّر الطلب، وحدود التوريد افتراضية في هذه النسخة.",
+        : "المخزون الزائد مال مجمّد، وليس خسارة محققة. تقدير التغطية لا يتنبأ بتغيّر الطلب، وحدود التوريد تقديرية.",
     "related-banner":
       related !== null ? (
         <>
@@ -417,7 +417,7 @@ export default function CatalogPage() {
           </button>
         </>
       ) : null,
-    "period-footer": (facts?.source === "files" ? "ملفات " : (isGuest ? "نسخة تجريبية · " : "فترة ")) + months[month].name + " ٢٠٢٦",
+    "period-footer": (facts?.source === "files" ? "ملفات " : (isGuest ? "بيانات توضيحية · " : "فترة ")) + months[month].name + " ٢٠٢٦",
     "catalog-count":
       number(rows.length) + " من " + number(source.length) + " أصناف",
     "catalog-table": (
@@ -431,7 +431,7 @@ export default function CatalogPage() {
       <>
         <Icon name="box" />
         <h3>لا توجد نتائج مطابقة</h3>
-        <p>جرّبي كلمة بحث أخرى أو أزيلي الفلاتر للوصول إلى أصنافك.</p>
+        <p>جرّب كلمة بحث أخرى أو أزيلي الفلاتر للوصول إلى أصنافك.</p>
         <button className="primary-button" onClick={reset}>
           مسح الفلاتر
         </button>

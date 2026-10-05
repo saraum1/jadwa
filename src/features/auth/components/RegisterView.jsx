@@ -72,9 +72,9 @@ export default function RegisterView({
             <div className={"demo-note"} {...bindings[".demo-note"]}>
               <span className={"demo-dot"} {...bindings[".demo-dot"]}></span>
               <p>
-                <b>{"معاينة تجريبية"}</b>
+                <b>{"جدوى MVP"}</b>
                 {
-                  " الحسابات غير مفعّلة بعد. استخدم بيانات تجريبية؛ لن تُرسل أو تُحفظ."
+                  " أنشئ حسابك وارفع ملفات منشأتك، أو جرّب جدوى كزائر."
                 }
               </p>
             </div>
@@ -310,7 +310,7 @@ export default function RegisterView({
               {"الدخول كزائر"}
             </a>
             <p className={"guest-note"} {...bindings[".guest-note"]}>
-              {"تصفّح الديمو ببيانات جاهزة، بدون حساب."}
+              {"جرّب جدوى ببيانات جاهزة، بدون حساب."}
             </p>
           </main>
           <footer className={"auth-footer"} {...bindings[".auth-footer"]}>
@@ -411,7 +411,7 @@ export default function RegisterView({
                   <b>{"٥٠٠"}</b>
                 </li>
               </ul>
-              <p>{"تقديرات من بيانات الديمو، وليست وفرًا محققًا."}</p>
+              <p>{"أرقام توضيحية تقديرية، وليست وفرًا محققًا."}</p>
               {loading && <Skeleton chart={false} />}
             </div>
             <div className={"story-points"} {...bindings[".story-points"]}>

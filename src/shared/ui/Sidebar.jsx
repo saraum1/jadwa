@@ -56,14 +56,14 @@ export default function Sidebar({ active, bindings = {} }) {
             </span>
             <span>
               <b>{businessName}</b>
-              <small>{isGuest ? "مساحة العمل التجريبية" : "مساحة العمل"}</small>
+              <small>{isGuest ? "حساب زائر" : "مساحة العمل"}</small>
             </span>
             <span
               className={"workspace-badge"}
               style={!isGuest ? { color: "#0b9875", borderColor: "#a7f3d0", background: "#ecfdf5" } : undefined}
               {...bindings[".workspace-badge"]}
             >
-              {isGuest ? "تجريبي" : "نشط"}
+              {isGuest ? "زائر" : "نشط"}
             </span>
           </div>
           <p className={"nav-caption"} {...bindings[".nav-caption"]}>

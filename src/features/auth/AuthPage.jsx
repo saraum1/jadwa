@@ -122,14 +122,14 @@ export default function AuthPage({ mode }) {
       const res = await loginAsGuest();
       if (res?.error) {
         setMessage(res.error === "Invalid login credentials"
-          ? "تعذر الدخول بحساب الزائر التجريبي."
+          ? "تعذر الدخول كزائر."
           : res.error);
         setLoading(false);
         return;
       }
       location.href = "dashboard.html";
     } catch {
-      setMessage("تعذر الدخول بحساب الزائر التجريبي. حاول مرة أخرى.");
+      setMessage("تعذر الدخول كزائر. حاول مرة أخرى.");
       setLoading(false);
     }
   }

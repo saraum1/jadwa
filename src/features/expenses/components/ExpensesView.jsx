@@ -165,7 +165,7 @@ export default function ExpensesView({
                     <>{"أين تتركّز المصروفات؟"}</>
                   )}
                 </h2>
-                <p>{"اضغطي على التصنيف لاستعراض بنوده"}</p>
+                <p>{"اضغط على التصنيف لاستعراض بنوده"}</p>
               </div>
               <span
                 className={"distribution-period"}
@@ -219,7 +219,7 @@ export default function ExpensesView({
                     <>{"قائمة المصروفات"}</>
                   )}
                 </h2>
-                <p>{"راجعي البنود ومصدرها قبل اتخاذ القرار."}</p>
+                <p>{"راجع البنود ومصدرها قبل اتخاذ القرار."}</p>
               </div>
               <span className={"subtle-info"} {...bindings[".subtle-info"]}>
                 {"المبالغ غير شاملة الضريبة"}
@@ -504,7 +504,7 @@ export default function ExpensesView({
                 className={"dialog-eyebrow"}
                 {...bindings[".dialog-eyebrow"]}
               >
-                {"جدوى · نسخة تجريبية"}
+                {"جدوى"}
               </span>
               <button
                 className={"icon-button"}
