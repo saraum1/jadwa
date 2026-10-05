@@ -115,10 +115,9 @@ export const authService = {
         avatar_initial: fallbackInitial,
       };
 
-      await supabase
-        .from("profiles")
-        .upsert(profileToCreate)
-        .catch(() => {});
+      try {
+        await supabase.from("profiles").upsert(profileToCreate);
+      } catch {}
 
       return toProfileDTO(profileToCreate);
     } catch {
@@ -176,9 +175,8 @@ export const authService = {
 
       const user = data.user;
       if (user) {
-        await supabase
-          .from("profiles")
-          .upsert({
+        try {
+          await supabase.from("profiles").upsert({
             id: user.id,
             email: user.email,
             full_name: fullName,
@@ -186,12 +184,14 @@ export const authService = {
             business_type: "مقهى ومطعم",
             role: "مالكة المنشأة",
             avatar_initial: avatarInitial,
-          })
-          .catch(() => {});
+          });
+        } catch {}
       }
 
       // Explicitly sign out so user goes through normal login flow
-      await supabase.auth.signOut().catch(() => {});
+      try {
+        await supabase.auth.signOut();
+      } catch {}
       try {
         localStorage.removeItem(LOCAL_SESSION_KEY);
       } catch {}
@@ -291,7 +291,9 @@ export const authService = {
         });
         res = await this.signIn(creds);
         if (res.user?.id) {
-          await supabase.rpc("seed_jadwa_user_data", { target_user_id: res.user.id }).catch(() => {});
+          try {
+            await supabase.rpc("seed_jadwa_user_data", { target_user_id: res.user.id });
+          } catch {}
         }
       } catch (err) {
         console.warn("[Jadwa Auth] Auto-provision fallback error:", err);
