@@ -150,7 +150,7 @@ export default function CatalogDetails({ item, tab, month }) {
               </p>
             )}
             <p className="sheet-disclaimer">
-              التكاليف عينة توضيحية للوحدات المباعة. الهدر المنفصل غير مضاف هنا.
+              التكاليف محسوبة للوحدات المباعة. الهدر المنفصل غير مضاف هنا.
             </p>
           </Block>
           <Block title="مواد المخزون المرتبطة">
@@ -261,8 +261,7 @@ export default function CatalogDetails({ item, tab, month }) {
         <Related ids={item.opportunities} month={month} />
       </Block>
       <p className="sheet-disclaimer">
-        جميع البيانات توضيحية. هذه الصفحة للاستعراض والتحليل ولا تعدّل الأسعار
-        أو أرصدة المخزون.
+        هذه الصفحة للاستعراض والتحليل، ولا تعدّل الأسعار أو أرصدة المخزون مباشرة.
       </p>
     </>
   );

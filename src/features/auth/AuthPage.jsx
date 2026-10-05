@@ -149,6 +149,7 @@ export default function AuthPage({ mode }) {
       onClick: handleGuest,
       style: loading ? { pointerEvents: "none", opacity: 0.7 } : undefined,
     },
+    ".demo-note": { hidden: true },
   };
 
   const slots = {

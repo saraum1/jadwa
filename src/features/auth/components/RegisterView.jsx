@@ -157,7 +157,7 @@ export default function RegisterView({
                       <input
                         id={"password"}
                         type={"password"}
-                        placeholder={"أدخل كلمة مرور تجريبية"}
+                        placeholder={"أدخل كلمة المرور"}
                         autoComplete={"new-password"}
                         required={true}
                         minLength={"8"}
@@ -191,7 +191,7 @@ export default function RegisterView({
                       {Object.hasOwn(slots, "password-hint") ? (
                         slots["password-hint"]
                       ) : (
-                        <>{"٨ أحرف على الأقل في هذه المعاينة."}</>
+                        <>{"٨ أحرف على الأقل."}</>
                       )}
                     </p>
                     <p

@@ -88,7 +88,7 @@ export default function MeetingPage() {
               {files.length
                 ? number(files.length) + " ملفات مرفقة · " + periodName
                 : params.get("mode") === "files"
-                  ? "الملفات السابقة غير متاحة في هذا التبويب. أضيفيها مجددًا من «تغيير الملفات»."
+                  ? "لم يتم العثور على ملفات مرفوعة لهذه الفترة. يمكنك إضافتها من «تغيير الملفات»."
                   : "بيانات توضيحية · " + periodName}
             </p>
           </div>

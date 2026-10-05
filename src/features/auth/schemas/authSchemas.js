@@ -31,7 +31,7 @@ export const registerSchema = z
     password: z
       .string()
       .min(1, "كلمة المرور مطلوبة.")
-      .min(8, "استخدم ٨ أحرف على الأقل في هذه المعاينة.")
+      .min(8, "استخدم ٨ أحرف على الأقل.")
       .max(128, "كلمة المرور طويلة جدًا."),
     "confirm-password": z
       .string()

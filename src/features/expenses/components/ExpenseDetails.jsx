@@ -37,13 +37,13 @@ export default function ExpenseDetails({ item: r, month }) {
         {categoryName(r.category)}
       </span>
       <h2 id="sheet-title">{r.name}</h2>
-      <p className="sheet-period">{m.name} ٢٠٢٦ · سجل توضيحي</p>
+      <p className="sheet-period">{m.name} ٢٠٢٦{r.sourceLabel ? " · من ملفاتك" : " · سجل توضيحي"}</p>
       <div className="expense-amount-box">
         <span>مبلغ المصروف للفترة</span>
         <strong>
           <Money value={r.amount} />
         </strong>
-        <small>غير شامل الضريبة · بيانات تجريبية</small>
+        <small>غير شامل الضريبة</small>
       </div>
       <dl className="expense-dl">
         {[
@@ -100,7 +100,7 @@ export default function ExpenseDetails({ item: r, month }) {
           <span>
             معرّف البند: <bdi>{r.id}</bdi>
           </span>
-          <small>{r.sourceLabel ? "سجل من ملفاتك المرفوعة في مركز البيانات" : "مرجع توضيحي لتجربة المنتج؛ لا يوجد ملف فعلي مرفوع."}</small>
+          <small>{r.sourceLabel ? "سجل من ملفاتك المرفوعة في مركز البيانات" : "بيانات توضيحية لعرض طريقة احتساب المصروفات."}</small>
         </div>
       </section>
       <section className="evidence-block">

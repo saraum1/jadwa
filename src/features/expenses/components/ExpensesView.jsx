@@ -222,7 +222,7 @@ export default function ExpensesView({
                 <p>{"راجعي البنود ومصدرها قبل اتخاذ القرار."}</p>
               </div>
               <span className={"subtle-info"} {...bindings[".subtle-info"]}>
-                {"المبالغ غير شاملة الضريبة · مثال توضيحي"}
+                {"المبالغ غير شاملة الضريبة"}
               </span>
             </div>
             <div

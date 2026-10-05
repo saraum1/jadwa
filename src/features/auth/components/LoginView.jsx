@@ -127,7 +127,7 @@ export default function LoginView({
                       <input
                         id={"password"}
                         type={"password"}
-                        placeholder={"أدخل كلمة مرور تجريبية"}
+                        placeholder={"أدخل كلمة المرور"}
                         autoComplete={"current-password"}
                         required={true}
                         minLength={"8"}

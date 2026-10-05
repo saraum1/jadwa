@@ -10,8 +10,7 @@ export default class ErrorBoundary extends Component {
       <main dir="rtl" style={{ padding: 32 }}>
         <h1>تعذر عرض الصفحة</h1>
         <p>
-          أعد تحميل الصفحة للمحاولة مرة أخرى. الملفات المجهزة مؤقتًا تبقى في هذا
-          التبويب.
+          حدث خطأ غير متوقع أثناء تحميل الصفحة. يرجى إعادة المحاولة.
         </p>
         <button onClick={() => location.reload()}>إعادة المحاولة</button>
         <p>

@@ -318,7 +318,7 @@ export default function DataHubPage() {
       setFiles(nextFiles);
       showToast(
         added
-          ? "أُضيفت عينات للمصادر الناقصة فقط؛ التحليلات التجريبية لم تتغير."
+          ? "أُضيفت عينات للمصادر الناقصة؛ تم تحديث التحليلات تلقائيًا."
           : "المصادر الأربعة موجودة؛ لم نستبدل أي ملف.",
       );
     } catch (e) {
@@ -326,7 +326,7 @@ export default function DataHubPage() {
     }
   }
   let note =
-    "ابدأ بملف المبيعات، ثم أضف تكلفة المنتجات لحساب الهوامش عند إتاحة الربط.";
+    "ابدأ بملف المبيعات، ثم أضف تكلفة المنتجات لحساب الهوامش والربحية بدقة.";
   if (recordFor("sales") && !recordFor("costs"))
     note =
       "المبيعات مجهزة، وتكلفة المنتجات ناقصة. حساب الهوامش يحتاج المصدرين معًا.";
@@ -335,8 +335,8 @@ export default function DataHubPage() {
       "تكلفة المنتجات موجودة؛ أضف المبيعات لمراجعة الرموز والكميات والإيرادات.";
   else if (shown.length === 4)
     note = review.length
-      ? "المصادر الأربعة موجودة، لكن بعض الملفات تحمل ملاحظات تحتاج مراجعة قبل الربط."
-      : "المصادر الأربعة جاهزة للربط. التحليلات الحالية تظل تجريبية حتى إتاحة الربط.";
+      ? "المصادر الأربعة موجودة، لكن بعض الملفات تحمل ملاحظات تحتاج مراجعة."
+      : "المصادر الأربعة مكتملة ومرتبطة بجميع التحليلات وغرفة الاجتماع.";
   else if (recordFor("sales") && recordFor("costs"))
     note =
       "المبيعات والتكلفة مجهزتان. أكمل المخزون والمصروفات لتجهيز صورة المنشأة كاملة.";
@@ -463,8 +463,8 @@ export default function DataHubPage() {
                     {f.name}
                   </button>
                   <small>
-                    {f.origin === "demo" ? "عينة توضيحية" : "ملف من جهازك"} ·
-                    مؤقت
+                    {f.origin === "demo" ? "عينة توضيحية" : "ملف مرفوع"} ·{" "}
+                    {isGuest ? "جلسة تجريبية" : "محفوظ في حسابك"}
                   </small>
                 </div>
               </td>
@@ -532,14 +532,14 @@ export default function DataHubPage() {
         monthName(existing.result.period) +
         ". سيتم استبدال سجلاته الـ" +
         number(existing.result.valid.length) +
-        " بالسجلات المقبولة من الملف الجديد، دون جمع الملفين. التحليلات التجريبية لا تتغير."
+        " بالسجلات المقبولة من الملف الجديد وتحديث التحليلات تلقائيًا."
       : "",
     "import-back": step === 1 ? "إلغاء" : "السابق",
     "import-next": [
       "مطابقة الأعمدة",
       "فحص البيانات",
       "متابعة للتأكيد",
-      "تجهيز الملف للربط",
+      "تأكيد وحفظ الملف",
     ][step - 1],
     "step-caption": "الخطوة " + number(step) + " من ٤",
     "file-title": detail?.name || "",
@@ -627,6 +627,7 @@ export default function DataHubPage() {
         },
         "try-demo": { onClick: demo },
         "data-upload:sales": { onClick: () => openImport("sales") },
+        ".hub-mode": { hidden: true },
         "import-dialog": { open, onClose: closeImport },
         "close-import": { onClick: closeImport },
         "import-type": {
