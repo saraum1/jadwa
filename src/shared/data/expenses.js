@@ -14,6 +14,16 @@ export const expenseCategories = [
   { id: "marketing", name: "التسويق", color: "#f28a75" },
   { id: "unclassified", name: "غير مصنف", color: "#94a3b8" },
 ];
+
+export function mapExpenseCategory(raw) {
+  const s = String(raw || "").trim();
+  if (/إيجار|ايجار|rent/i.test(s)) return "rent";
+  if (/رواتب|راتب|payroll|salaries/i.test(s)) return "payroll";
+  if (/خدمات|كهرباء|مياه|utilities|water|electric/i.test(s)) return "utilities";
+  if (/اشتراك|برمج|software|subscription|تطبيق/i.test(s)) return "software";
+  if (/تسويق|إعلان|اعلان|marketing|ads/i.test(s)) return "marketing";
+  return "unclassified";
+}
 export const expenseRecords = [
   {
     id: "rent-01",

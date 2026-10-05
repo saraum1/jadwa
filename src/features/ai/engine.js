@@ -233,7 +233,7 @@ export function analyze(ds, prev) {
       total: operating,
       byCategory: [...cats].map(([name, total]) => ({ name, total: round(total) })).sort((a, b) => b.total - a.total),
       recurringTotal: round(sum(ds.expenses.filter(e => e.recurring), e => e.amount)),
-      items: ds.expenses.map(e => ({ name: e.name, amount: round(e.amount), category: e.category, recurring: e.recurring }))
+      items: ds.expenses.map(e => ({ name: e.name, amount: round(e.amount), category: e.category, recurring: e.recurring, date: e.date, vendor: e.vendor }))
     };
     // اشتراكات متكررة متشابهة
     const groups = new Map();

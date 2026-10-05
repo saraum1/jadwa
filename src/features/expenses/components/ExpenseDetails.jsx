@@ -47,8 +47,8 @@ export default function ExpenseDetails({ item: r, month }) {
       </div>
       <dl className="expense-dl">
         {[
-          ["الجهة", r.vendor],
-          ["تاريخ المصروف", number(r.day) + " " + m.name + " ٢٠٢٦"],
+          ["الجهة", r.vendor || "غير محدد"],
+          ["تاريخ المصروف", r.date || (r.day ? number(r.day) + " " + m.name + " ٢٠٢٦" : m.name + " ٢٠٢٦")],
           ["الفترة التي يخصها", m.name + " ٢٠٢٦"],
           ["التكرار", r.recurring ? "شهري" : "غير متكرر"],
           ...(r.recurring ? [["موعد التجديد التالي", renewal]] : []),
@@ -62,7 +62,7 @@ export default function ExpenseDetails({ item: r, month }) {
       </dl>
       <section className="evidence-block">
         <h3>عن هذا المصروف</h3>
-        <p>{r.description}</p>
+        <p>{r.description || `مصروف تشغيلي مسجل ضمن فئة ${categoryName(r.category)} بقيمة ${number(r.amount)} ريال.`}</p>
       </section>
       <section className="evidence-block">
         <h3>المقارنة بالفترة السابقة</h3>
@@ -92,15 +92,15 @@ export default function ExpenseDetails({ item: r, month }) {
         </p>
       </section>
       <section className="evidence-block">
-        <h3>مرجع السجل التجريبي</h3>
+        <h3>مرجع السجل</h3>
         <div className="expense-source">
           <span>
-            مصروفات_{m.name}.xlsx · الصف {number(r.sourceRow)}
+            {r.sourceFile || `مصروفات_${m.name}.xlsx`} · الصف {number(r.sourceRow)}
           </span>
           <span>
             معرّف البند: <bdi>{r.id}</bdi>
           </span>
-          <small>مرجع توضيحي لتجربة المنتج؛ لا يوجد ملف فعلي مرفوع.</small>
+          <small>{r.sourceLabel ? "سجل من ملفاتك المرفوعة في مركز البيانات" : "مرجع توضيحي لتجربة المنتج؛ لا يوجد ملف فعلي مرفوع."}</small>
         </div>
       </section>
       <section className="evidence-block">

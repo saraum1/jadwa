@@ -7,6 +7,7 @@ import {
   expenseComparison,
   expenseReconciliation,
   expenseRecords as defaultRecords,
+  mapExpenseCategory,
 } from "../../shared/data/expenses.js";
 import { normalizeSearch } from "../../shared/data/catalog.js";
 import { useQuery, useWorkspace } from "../../shared/lib/hooks.js";
@@ -17,6 +18,9 @@ import { expensesService } from "./services/expensesService.js";
 import { useAuth } from "../../shared/lib/authContext.jsx";
 import { computeAvatarInitial } from "../../shared/types/dto.js";
 import { openAskJadwa } from "../ai/client.js";
+import { usePeriodFacts, getSourceLabel } from "../ai/usePeriodFacts.js";
+
+export { mapExpenseCategory };
 
 export default function ExpensesPage() {
   const { user, loading: authLoading, logout } = useAuth();
@@ -66,19 +70,46 @@ export default function ExpensesPage() {
     ? "ش"
     : (computeAvatarInitial(user?.profile?.fullName, user?.email) || (displayName ? displayName.charAt(0) : "م"));
 
+  const { facts, source: factsSource, loading: factsLoading } = usePeriodFacts(month);
+  const isFactsFiles = facts && facts.source === "files";
+
+  const fileRecords = isFactsFiles && facts.expenses?.items
+    ? facts.expenses.items.map((e, idx) => {
+        const catId = mapExpenseCategory(e.category);
+        const isSoftware = catId === "software" || /اشتراك|برمج|software|subscription|تطبيق/i.test(e.name || "");
+        const day = e.date ? Number(e.date.slice(8, 10)) : (idx + 1);
+        return {
+          id: `exp-${idx + 1}`,
+          name: e.name,
+          category: catId,
+          vendor: e.vendor || "غير محدد",
+          recurring: Boolean(e.recurring),
+          day: isNaN(day) || !day ? (idx + 1) : day,
+          date: e.date || (month === "aug" ? "2026-08-01" : "2026-09-01"),
+          amount: e.amount,
+          opportunity: isSoftware ? 2 : null,
+          description: `مصروف تشغيلي مسجل ضمن فئة ${categoryName(catId)} بقيمة ${number(e.amount)} ريال.`,
+          sourceFile: `مصروفات_${months[month]?.name || month}.xlsx`,
+          sourceRow: idx + 2,
+          sourceLabel: true,
+        };
+      })
+    : null;
+
+  const rawRecords = fileRecords || records;
   const q = normalizeSearch(query);
-  const all = records.map((r, i) => ({
+  const all = rawRecords.map((r, i) => ({
     ...r,
     category: expenseCategories.some((c) => c.id === r.category)
       ? r.category
-      : "unclassified",
-    sourceRow: i + 2,
+      : mapExpenseCategory(r.category),
+    sourceRow: r.sourceRow || (i + 2),
   }));
 
   const list = all
     .filter(
       (r) =>
-        (!q || normalizeSearch(r.name + " " + r.vendor).includes(q)) &&
+        (!q || normalizeSearch(r.name + " " + (r.vendor || "")).includes(q)) &&
         (category === "all" || r.category === category) &&
         (recurrence === "all" ||
           r.recurring === (recurrence === "recurring")) &&
@@ -87,13 +118,17 @@ export default function ExpensesPage() {
     .sort((a, b) =>
       sort.startsWith("amount")
         ? (a.amount - b.amount) * (sort.endsWith("asc") ? 1 : -1)
-        : a.date.localeCompare(b.date) * (sort.endsWith("asc") ? 1 : -1),
+        : String(a.date || "").localeCompare(String(b.date || "")) * (sort.endsWith("asc") ? 1 : -1),
     );
 
-  const total = all.reduce((s, r) => s + r.amount, 0);
-  const recurringTotal = all
-    .filter((r) => r.recurring)
-    .reduce((s, r) => s + r.amount, 0);
+  const total = isFactsFiles && facts.expenses?.total != null
+    ? facts.expenses.total
+    : all.reduce((s, r) => s + r.amount, 0);
+
+  const recurringTotal = isFactsFiles && facts.expenses?.recurringTotal != null
+    ? facts.expenses.recurringTotal
+    : all.filter((r) => r.recurring).reduce((s, r) => s + r.amount, 0);
+
   const recurringCount = all.filter((r) => r.recurring).length;
 
   const categoriesTotal = expenseCategories.map((c) => ({
@@ -106,7 +141,11 @@ export default function ExpensesPage() {
   const m = months[month];
   // August comparison
   const augTotal = defaultRecords.reduce((s, r) => s + (r.aug || 0), 0);
-  const c = month === "sep" ? expenseComparison(total, augTotal) : null;
+  const c = isFactsFiles
+    ? (facts.previous?.operatingExpenses != null && month === "sep"
+        ? expenseComparison(total, facts.previous.operatingExpenses)
+        : null)
+    : (month === "sep" ? expenseComparison(total, augTotal) : null);
   const max = Math.max(1, ...categoriesTotal.map((c) => c.total));
 
   useEffect(() => {
@@ -124,6 +163,11 @@ export default function ExpensesPage() {
 
   const breakdown = () => {
     const r = expenseReconciliation(month);
+    const prodCost = isFactsFiles && facts.summary?.productCost !== null ? facts.summary.productCost : r.products;
+    const wstCost = isFactsFiles && facts.summary?.wasteCost !== null ? facts.summary.wasteCost : r.waste;
+    const opTotal = total || r.operating;
+    const grandTotal = isFactsFiles && facts.summary?.totalCost !== null ? facts.summary.totalCost : (prodCost + wstCost + opTotal);
+
     w.setInfo({
       title: "كيف تُحسب إجمالي التكاليف؟",
       content: (
@@ -134,9 +178,9 @@ export default function ExpensesPage() {
           <table className="ledger">
             <tbody>
               {[
-                ["تكلفة الوحدات المباعة", r.products],
-                ["الهدر المسجل منفصلًا", r.waste],
-                ["المصروفات التشغيلية", total || r.operating],
+                ["تكلفة الوحدات المباعة", prodCost],
+                ["الهدر المسجل منفصلًا", wstCost],
+                ["المصروفات التشغيلية", opTotal],
               ].map(([label, n]) => (
                 <tr key={label}>
                   <td>{label}</td>
@@ -150,7 +194,7 @@ export default function ExpensesPage() {
           <div className="reconcile-total">
             <span>إجمالي التكاليف</span>
             <strong>
-              <Money value={r.products + r.waste + (total || r.operating)} />
+              <Money value={grandTotal} />
             </strong>
           </div>
           <p className="dialog-description">
@@ -218,6 +262,8 @@ export default function ExpensesPage() {
         " عن أغسطس"
     : "لا تتوفر بيانات يوليو للمقارنة";
 
+  const pageLoading = isFactsFiles ? factsLoading : loading;
+
   const slots = {
     "expense-summary": (
       <>
@@ -227,26 +273,26 @@ export default function ExpensesPage() {
           value={<Money value={total} />}
           note={m.name + " ٢٠٢٦"}
           featured
-          loading={loading}
+          loading={pageLoading}
         />
         <Summary
           icon="trend"
           title="التغير عن الشهر السابق"
           value={c ? <Money value={Math.abs(c.difference)} /> : "—"}
           note={change}
-          loading={loading}
+          loading={pageLoading}
         />
         <Summary
           icon="calendar"
           title="مصروفات متكررة"
           value={<Money value={recurringTotal} />}
           note={number(recurringCount) + " بنود شهرية في الفترة"}
-          loading={loading}
+          loading={pageLoading}
         />
       </>
     ),
     "mini-avatar": avatarChar,
-    "demo-label": isGuest ? "بيانات توضيحية" : "بيانات المنشأة",
+    "demo-label": getSourceLabel(facts?.source || (isGuest ? "demo" : "database")),
     "topbar-actions": (
       <button
         type="button"
@@ -274,7 +320,7 @@ export default function ExpensesPage() {
       </button>
     ),
     "distribution-period": m.name + " ٢٠٢٦",
-    "period-footer": (isGuest ? "نسخة تجريبية · " : "فترة ") + m.name + " ٢٠٢٦",
+    "period-footer": (facts?.source === "files" ? "ملفات " : isGuest ? "نسخة تجريبية · " : "فترة ") + m.name + " ٢٠٢٦",
     "expense-bars": categoriesTotal
       .filter((c) => c.total > 0)
       .map((c) => (
@@ -321,7 +367,7 @@ export default function ExpensesPage() {
     ),
     "expense-table": (
       <DataTable
-        {...{ headers, loading }}
+        {...{ headers, loading: pageLoading }}
         rows={cells}
         className="catalog-table expenses-table"
         sortKey={sort.split("-")[0]}
@@ -355,7 +401,7 @@ export default function ExpensesPage() {
     "dialog-content": (
       <InfoContent info={w.info} onClose={() => w.setInfo(null)} />
     ),
-    "loading-status": loading
+    "loading-status": pageLoading
       ? "جاري تحميل مصروفات " + m.name
       : number(list.length) + " نتائج",
   };
@@ -372,13 +418,13 @@ export default function ExpensesPage() {
           onChange: (e) => update({ month: e.target.value, item: null }),
         },
         "expense-table": {
-          hidden: !loading && !list.length,
-          inert: loading,
-          "aria-busy": loading,
+          hidden: !pageLoading && !list.length,
+          inert: pageLoading,
+          "aria-busy": pageLoading,
         },
-        "catalog-message": { hidden: loading || !!list.length },
-        ".catalog-toolbar": { inert: loading },
-        "expense-bars": { inert: loading },
+        "catalog-message": { hidden: pageLoading || !!list.length },
+        ".catalog-toolbar": { inert: pageLoading },
+        "expense-bars": { inert: pageLoading },
         "related-banner": { hidden: !related },
         "expense-search": {
           value: query,
