@@ -19,6 +19,7 @@ import { measurementSchema, dismissSchema } from "./schemas/opportunitySchemas.j
 import { useAuth } from "../../shared/lib/authContext.jsx";
 import { computeAvatarInitial } from "../../shared/types/dto.js";
 import { openAskJadwa } from "../ai/client.js";
+import { usePeriodFacts, getSourceLabel } from "../ai/usePeriodFacts.js";
 
 const statuses = {
     new: "جديدة",
@@ -117,14 +118,14 @@ function OpportunityDetails({ id, month, s, o, transition }) {
       <h2 id="sheet-title" ref={title} tabIndex={-1}>
         {o.title}
       </h2>
-      <p className="sheet-period">{m.name} ٢٠٢٦ · بيانات المنشأة</p>
+      <p className="sheet-period">{m.name} ٢٠٢٦ · {o.sourceLabel || "بيانات المنشأة"}</p>
       <div className="sheet-saving">
         <div>
           <p>الوفر الشهري المحتمل</p>
           <small>تقدير قبل التنفيذ والقياس</small>
         </div>
         <strong>
-          <Money value={o.potentialSaving ?? m.amounts[id]} />
+          <Money value={o.potentialSaving ?? o.saving ?? m.amounts[id]} />
         </strong>
       </div>
       {step >= 0 && (
@@ -175,43 +176,55 @@ function OpportunityDetails({ id, month, s, o, transition }) {
       )}
       <section className="evidence-block">
         <h3>ما الذي لاحظه جدوى؟</h3>
-        <p>{o.evidence}</p>
+        <p>{o.evidence || o.problem}</p>
+        {o.cause && o.cause !== o.evidence && (
+          <p style={{ marginTop: "8px", color: "#475569" }}>
+            <strong>السبب: </strong>{o.cause}
+          </p>
+        )}
         <div className="source-reference">
           <Icon name="file" />
-          <span>{o.source}</span>
+          <span>{o.source || "بيانات المنشأة"}</span>
         </div>
       </section>
       <section className="evidence-block">
         <h3>كيف قُدّر الوفر؟</h3>
         <p className="calculation-text">
           <Text>
-            {month === "sep"
-              ? o.calculation
-              : `تقدير توضيحي لشهر أغسطس بقيمة ${number(m.amounts[id])} ⃁. تختلف افتراضات حجم النشاط عن سبتمبر؛ لا يُعد هذا المبلغ وفرًا محققًا.`}
+            {o.calculation || o.basis || (month === "sep" ? o.calculation : `تقدير توضيحي لشهر أغسطس بقيمة ${number(m.amounts[id])} ⃁.`)}
           </Text>
         </p>
+        {o.confidence && (
+          <small style={{ display: "block", marginTop: "8px", color: "#64748b" }}>
+            درجة الثقة: {o.confidence}
+          </small>
+        )}
       </section>
       <button
         className="context-question"
-        onClick={() =>
-          (location.href =
-            id < 2
-              ? "products.html?month=" +
-                month +
-                "&tab=" +
-                (id === 0 ? "inventory" : "products") +
-                "&opportunity=" +
-                id
-              : "expenses.html?month=" + month + "&opportunity=2")
-        }
+        onClick={() => {
+          if (o.targetPage) {
+            location.href = o.targetPage + "?month=" + month;
+          } else {
+            location.href =
+              id < 2
+                ? "products.html?month=" +
+                  month +
+                  "&tab=" +
+                  (id === 0 ? "inventory" : "products") +
+                  "&opportunity=" +
+                  id
+                : "expenses.html?month=" + month + "&opportunity=2";
+          }
+        }}
       >
-        <Icon name={id < 2 ? "box" : "wallet"} />
-        {id < 2 ? "عرض الأصناف المرتبطة" : "عرض المصروفات المرتبطة"}
+        <Icon name={o.icon === "wallet" || o.targetPage === "expenses.html" ? "wallet" : "box"} />
+        {o.targetPage === "expenses.html" || id >= 2 ? "عرض المصروفات المرتبطة" : "عرض الأصناف المرتبطة"}
       </button>
       <section className="steps-block">
         <h3>خطوات مقترحة</h3>
         <ol>
-          {o.steps.map((text) => (
+          {(o.steps || [o.decision]).filter(Boolean).map((text) => (
             <li key={text}>{text}</li>
           ))}
         </ol>
@@ -395,9 +408,69 @@ export default function OpportunitiesPage() {
     }
   }, [authLoading, user]);
 
+  const { facts, source, loading: factsLoading } = usePeriodFacts(month);
+  const isFactsFiles = facts && facts.source === "files";
+
+  const fileOpportunities = isFactsFiles
+    ? facts.decisions.map((d) => ({
+        id: d.id,
+        title: d.title,
+        text: d.cause || d.problem,
+        problem: d.problem,
+        cause: d.cause,
+        decision: d.decision,
+        potentialSaving: d.saving,
+        saving: d.saving,
+        confidence: d.confidence,
+        basis: d.basis,
+        category: d.categoryName,
+        categoryName: d.categoryName,
+        icon:
+          d.category === "duplicate_subscription"
+            ? "wallet"
+            : d.category === "cost_increase"
+              ? "cart"
+              : "box",
+        accent:
+          d.category === "losing_product"
+            ? "#ef4444"
+            : d.category === "duplicate_subscription"
+              ? "#e3b130"
+              : "#2563eb",
+        evidence: d.problem + (d.cause ? " " + d.cause : ""),
+        calculation: d.basis || `التوفير المحسوب: ${number(d.saving)} ريال.`,
+        steps: [d.decision],
+        source: "تحليل ملفات مركز البيانات",
+        sourceLabel: "من ملفاتك المرفوعة",
+        targetPage:
+          d.page ||
+          (d.category === "duplicate_subscription"
+            ? "expenses.html"
+            : "products.html"),
+      }))
+    : null;
+
   const [loading, setLoading] = useState(true);
   const [opportunitiesList, setOpportunitiesList] = useState([]);
   const [stateByMonth, setStates] = useState({ sep: [], aug: [] });
+  const [workflowMap, setWorkflowMap] = useState(() => {
+    try {
+      const raw = localStorage.getItem("jadwa_workflow_" + month);
+      return raw ? JSON.parse(raw) : {};
+    } catch {
+      return {};
+    }
+  });
+
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem("jadwa_workflow_" + month);
+      setWorkflowMap(raw ? JSON.parse(raw) : {});
+    } catch {
+      setWorkflowMap({});
+    }
+  }, [month]);
+
   const [category, setCategory] = useState("all");
   const [sort, setSort] = useState("highest");
   const [current, setCurrent] = useState(null);
@@ -436,32 +509,41 @@ export default function OpportunitiesPage() {
     ? "ش"
     : (computeAvatarInitial(user?.profile?.fullName, user?.email) || (displayName ? displayName.charAt(0) : "م"));
 
+  const displayedOpportunities = fileOpportunities || opportunitiesList;
+  const pageLoading = isFactsFiles ? factsLoading : (loading || factsLoading);
   const states = stateByMonth[month] || fresh();
-  const ids = opportunitiesList
+
+  const ids = displayedOpportunities
     .map((_, i) => i)
-    .filter((i) => category === "all" || String(i) === category)
+    .filter((i) => category === "all" || String(i) === category || displayedOpportunities[i]?.id === category)
     .sort((a, b) => {
-      const amtA = opportunitiesList[a].potentialSaving ?? m.amounts[a];
-      const amtB = opportunitiesList[b].potentialSaving ?? m.amounts[b];
+      const amtA = displayedOpportunities[a]?.potentialSaving ?? displayedOpportunities[a]?.saving ?? m.amounts?.[a] ?? 0;
+      const amtB = displayedOpportunities[b]?.potentialSaving ?? displayedOpportunities[b]?.saving ?? m.amounts?.[b] ?? 0;
+      const stA = isFactsFiles ? (workflowMap[displayedOpportunities[a]?.id]?.status || "new") : (states[a]?.status || "new");
+      const stB = isFactsFiles ? (workflowMap[displayedOpportunities[b]?.id]?.status || "new") : (states[b]?.status || "new");
       return sort === "lowest"
         ? amtA - amtB
         : sort === "status"
-          ? Object.keys(statuses).indexOf(states[a]?.status || "new") -
-              Object.keys(statuses).indexOf(states[b]?.status || "new") ||
-            amtB - amtA
+          ? Object.keys(statuses).indexOf(stA) - Object.keys(statuses).indexOf(stB) || amtB - amtA
           : amtB - amtA;
     });
 
   useEffect(() => {
-    if (
-      !loading &&
-      params.has("opportunity") &&
-      opportunitiesList[Number(params.get("opportunity"))]
-    )
-      setCurrent(Number(params.get("opportunity")));
-  }, [loading]);
+    if (!pageLoading && params.has("opportunity")) {
+      const oppParam = params.get("opportunity");
+      const foundIdx = displayedOpportunities.findIndex(
+        (o, i) => o.id === oppParam || String(i) === oppParam,
+      );
+      if (foundIdx !== -1) setCurrent(foundIdx);
+    }
+  }, [pageLoading, displayedOpportunities]);
 
   async function transition(next, extra = {}) {
+    if (current === null) return;
+    const curOpp = displayedOpportunities[current];
+    if (!curOpp) return;
+    const oppKey = curOpp.id || String(current);
+
     const allowed = {
       new: ["active", "dismissed"],
       active: ["awaiting", "dismissed"],
@@ -469,28 +551,52 @@ export default function OpportunitiesPage() {
       dismissed: ["new"],
       completed: [],
     };
-    if (!allowed[states[current]?.status]?.includes(next)) return;
 
-    setStates((prev) => ({
-      ...prev,
-      [month]: prev[month].map((s, i) =>
-        i === current ? { ...s, ...extra, status: next } : s,
-      ),
-    }));
+    const currentStatus = isFactsFiles
+      ? (workflowMap[oppKey]?.status || "new")
+      : (states[current]?.status || "new");
 
-    await opportunityService.updateOpportunity(month, current, {
-      status: next,
-      reason: extra.reason,
-      measurement: extra.measurement,
-    });
+    if (!allowed[currentStatus]?.includes(next)) return;
+
+    if (isFactsFiles) {
+      setWorkflowMap((prev) => {
+        const nextMap = {
+          ...prev,
+          [oppKey]: {
+            ...(prev[oppKey] || { status: "new" }),
+            ...extra,
+            status: next,
+          },
+        };
+        try {
+          localStorage.setItem("jadwa_workflow_" + month, JSON.stringify(nextMap));
+        } catch {}
+        return nextMap;
+      });
+    } else {
+      setStates((prev) => ({
+        ...prev,
+        [month]: prev[month].map((s, i) =>
+          i === current ? { ...s, ...extra, status: next } : s,
+        ),
+      }));
+      await opportunityService.updateOpportunity(month, current, {
+        status: next,
+        reason: extra.reason,
+        measurement: extra.measurement,
+      });
+    }
 
     showToast("تم تحديث وحفظ حالة الفرصة بنجاح");
   }
 
-  const waiting = states.filter((s) => s.status === "awaiting").length;
+  const waitingCount = displayedOpportunities.filter((o, i) =>
+    (isFactsFiles ? (workflowMap[o.id]?.status || "new") : (states[i]?.status || "new")) === "awaiting",
+  ).length;
+
   const slots = {
     "mini-avatar": avatarChar,
-    "demo-label": isGuest ? "بيانات توضيحية" : "بيانات المنشأة",
+    "demo-label": getSourceLabel(facts?.source || (isGuest ? "demo" : "database")),
     "topbar-actions": (
       <button
         type="button"
@@ -518,42 +624,52 @@ export default function OpportunitiesPage() {
       </button>
     ),
     "potential-value": number(
-      states.reduce(
-        (sum, s, i) => {
-          const amt = opportunitiesList[i]?.potentialSaving ?? m.amounts[i] ?? 0;
-          return sum + (["dismissed", "completed"].includes(s.status) ? 0 : amt);
+      displayedOpportunities.reduce(
+        (sum, o, i) => {
+          const st = isFactsFiles ? (workflowMap[o.id]?.status || "new") : (states[i]?.status || "new");
+          const amt = o.potentialSaving ?? o.saving ?? m.amounts[i] ?? 0;
+          return sum + (["dismissed", "completed"].includes(st) ? 0 : amt);
         },
         0,
       ),
     ),
-    "new-count": number(states.filter((s) => s.status === "new").length),
-    "active-count": number(states.filter((s) => s.status === "active").length),
-    "pending-label": waiting
-      ? number(waiting) + " بانتظار قياس الأثر"
+    "new-count": number(
+      displayedOpportunities.filter((o, i) =>
+        (isFactsFiles ? (workflowMap[o.id]?.status || "new") : (states[i]?.status || "new")) === "new",
+      ).length,
+    ),
+    "active-count": number(
+      displayedOpportunities.filter((o, i) =>
+        (isFactsFiles ? (workflowMap[o.id]?.status || "new") : (states[i]?.status || "new")) === "active",
+      ).length,
+    ),
+    "pending-label": waitingCount
+      ? number(waitingCount) + " بانتظار قياس الأثر"
       : "لا توجد فرص بانتظار قياس الأثر",
-    "result-count": number(ids.length) + " من " + number(opportunitiesList.length),
-    "period-footer": (isGuest ? "نسخة تجريبية · " : "فترة ") + m.name + " ٢٠٢٦",
+    "result-count": number(ids.length) + " من " + number(displayedOpportunities.length),
+    "period-footer": (facts?.source === "files" ? "ملفات " : (isGuest ? "نسخة تجريبية · " : "فترة ")) + m.name + " ٢٠٢٦",
     "opportunity-list": ids.length > 0 ? ids.map((i) => {
-      const o = opportunitiesList[i],
-        s = states[i] || { status: "new" },
-        amt = o?.potentialSaving ?? m.amounts[i] ?? 0,
+      const o = displayedOpportunities[i],
+        s = isFactsFiles ? (workflowMap[o.id] || { status: "new" }) : (states[i] || { status: "new" }),
+        amt = o?.potentialSaving ?? o?.saving ?? m.amounts[i] ?? 0,
         rank =
-          [0, 1, 2]
-            .sort((a, b) => (opportunitiesList[b]?.potentialSaving ?? m.amounts[b] ?? 0) - (opportunitiesList[a]?.potentialSaving ?? m.amounts[a] ?? 0))
+          displayedOpportunities
+            .map((_, idx) => idx)
+            .sort((a, b) => (displayedOpportunities[b]?.potentialSaving ?? displayedOpportunities[b]?.saving ?? 0) - (displayedOpportunities[a]?.potentialSaving ?? displayedOpportunities[a]?.saving ?? 0))
             .indexOf(i) + 1;
       if (!o) return null;
       return (
         <article
-          key={i}
+          key={o.id || i}
           className={
             "opportunity-row " +
             (["dismissed", "completed"].includes(s.status)
               ? "row-excluded "
               : "") +
-            (loading ? "is-loading" : "")
+            (pageLoading ? "is-loading" : "")
           }
           style={{ "--accent": o.accent }}
-          inert={loading}
+          inert={pageLoading}
         >
           <span className="rank-number" aria-label={"الأولوية " + number(rank)}>
             {number(rank).padStart(2, "٠")}
@@ -579,7 +695,7 @@ export default function OpportunitiesPage() {
           </div>
           <button
             className="review-button"
-            data-review={i}
+            data-review={o.id || i}
             aria-label={"مراجعة: " + o.title}
             onClick={() => {
               setCurrent(i);
@@ -588,11 +704,11 @@ export default function OpportunitiesPage() {
           >
             مراجعة الفرصة
           </button>
-          {loading && <Skeleton />}
+          {pageLoading && <Skeleton />}
         </article>
       );
     }) : (
-      !loading ? (
+      !pageLoading ? (
         <div style={{ padding: "36px", textAlign: "center", color: "#64748b", background: "white", borderRadius: "12px", border: "1px solid #e9edf3" }}>
           <p style={{ margin: "0 0 6px", fontWeight: "500", color: "#334155" }}>لا توجد فرص مسجلة حاليًا لهذه الفترة</p>
           <small style={{ color: "#94a3b8" }}>يمكنك إضافة مصادر البيانات عبر مركز البيانات للبدء في توليد فرص التوفير.</small>
@@ -600,13 +716,13 @@ export default function OpportunitiesPage() {
       ) : null
     ),
     "sheet-content":
-      current !== null && opportunitiesList[current] ? (
+      current !== null && displayedOpportunities[current] ? (
         <OpportunityDetails
-          key={month + current}
+          key={month + (displayedOpportunities[current]?.id || current)}
           id={current}
           month={month}
-          s={states[current] || { status: "new" }}
-          o={opportunitiesList[current]}
+          s={isFactsFiles ? (workflowMap[displayedOpportunities[current]?.id] || { status: "new" }) : (states[current] || { status: "new" })}
+          o={displayedOpportunities[current]}
           transition={transition}
         />
       ) : null,
@@ -614,7 +730,7 @@ export default function OpportunitiesPage() {
       <InfoContent info={w.info} onClose={() => w.setInfo(null)} />
     ),
     toast: toast,
-    "loading-status": loading
+    "loading-status": pageLoading
       ? "جاري تحميل فرص " + m.name
       : number(ids.length) + " فرص معروضة",
   };
@@ -622,7 +738,7 @@ export default function OpportunitiesPage() {
   return (
     <View
       active="opportunities"
-      loading={loading}
+      loading={pageLoading}
       slots={slots}
       refs={w.refs}
       bindings={{
@@ -645,8 +761,8 @@ export default function OpportunitiesPage() {
             },
           ]),
         ),
-        ".opportunity-toolbar": { inert: loading },
-        "opportunity-list": { "aria-busy": loading },
+        ".opportunity-toolbar": { inert: pageLoading },
+        "opportunity-list": { "aria-busy": pageLoading },
         "opportunity-dialog": {
           open: current !== null,
           onClose: () => setCurrent(null),
