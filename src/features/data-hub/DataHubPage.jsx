@@ -248,13 +248,29 @@ export default function DataHubPage() {
         nextFiles.push(f);
         if (f.type === "sales") {
           const costs = recordFor("costs", f.result.period, nextFiles);
+          // ملف تكلفة قديم بمطابقة ناقصة لا يجب أن يمنع حفظ ملف المبيعات الجديد
           if (costs)
-            costs.result = HubData.validate(
-              "costs",
-              costs.parsed,
-              costs.mapping,
-              new Set(f.result.valid.map((r) => r.values.code)),
-            );
+            try {
+              costs.result = HubData.validate(
+                "costs",
+                costs.parsed,
+                costs.mapping,
+                new Set(f.result.valid.map((r) => r.values.code)),
+              );
+            } catch {
+              costs.result = {
+                ...costs.result,
+                issues: [
+                  ...(costs.result.issues || []),
+                  {
+                    level: "warning",
+                    line: null,
+                    field: "ربط المنتجات",
+                    message: "تعذر ربط ملف التكلفة بالمبيعات الجديدة. أعد رفع ملف التكلفة لهذا الشهر.",
+                  },
+                ],
+              };
+            }
         }
         JadwaSession.save(nextFiles);
         dataHubService.saveFile(f).catch(() => {});
