@@ -97,8 +97,8 @@ export async function generateStream(system, contents, opts) {
 }
 
 // تحويل نص إلى صوت. يرجع WAV جاهز للتشغيل في المتصفح.
-export async function speak(text, style) {
-  const prompt = `${style}\n\n${text}`;
+export async function speak(text) {
+  const prompt = text;
   const res = await post([config.ttsModel(), ...config.ttsFallbacks()], 'generateContent', {
     contents: [{ role: 'user', parts: [{ text: prompt }] }],
     generationConfig: {

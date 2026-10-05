@@ -62,6 +62,7 @@ export function useMeetingVoice({ period, getRoom }) {
 
   // ---------- الصوت ----------
   function stopSpeaking() {
+    r.current.speechId = (r.current.speechId || 0) + 1; // يوقف أي طابور كلام قائم
     try {
       r.current.source?.stop();
     } catch {}
@@ -69,10 +70,10 @@ export function useMeetingVoice({ period, getRoom }) {
     if (window.speechSynthesis) speechSynthesis.cancel();
     mouth(0);
   }
-  async function speakWithGemini(text) {
+  async function playBuffer(data) {
     const ctx = (r.current.audioCtx ||= new (window.AudioContext || window.webkitAudioContext)());
     if (ctx.state === "suspended") await ctx.resume();
-    const buffer = await ctx.decodeAudioData(await speak(text));
+    const buffer = await ctx.decodeAudioData(data);
     const source = ctx.createBufferSource(),
       analyser = ctx.createAnalyser();
     analyser.fftSize = 512;
@@ -121,24 +122,69 @@ export function useMeetingVoice({ period, getRoom }) {
       speechSynthesis.speak(u);
     });
   }
-  async function say(text) {
-    setPhase("speaking");
-    setCaption(text);
-    emit("say", { text });
-    try {
-      if (!r.current.browserVoice) await speakWithGemini(text);
-      else await speakWithBrowser(text);
-    } catch (e) {
-      r.current.browserVoice = true;
-      setNote("صوت جدوى الآن من المتصفح مؤقتًا" + (e.code === "rate_limit" ? " (وصلنا لحد الصوت المجاني)." : "."));
-      if (r.current.phase === "speaking") await speakWithBrowser(text);
+
+  /*
+   * طابور كلام: أول جملة تُرسل للصوت فور اكتمالها أثناء وصول الرد،
+   * والباقي يُجهَّز وهي تُقال. طلبان صوت فقط لكل رد (يحفظ حد الاستخدام المجاني).
+   */
+  function createSpeaker() {
+    const id = (r.current.speechId = (r.current.speechId || 0) + 1);
+    const queue = [];
+    let firstEnd = 0,
+      loop = null;
+    const live = () => r.current.speechId === id && r.current.alive;
+    const fetchAudio = (text) =>
+      r.current.browserVoice
+        ? Promise.resolve(null)
+        : speak(text).catch((e) => {
+            r.current.browserVoice = true;
+            setNote("صوت جدوى الآن من المتصفح مؤقتًا" + (e.code === "rate_limit" ? " (وصلنا لحد الصوت المجاني)." : "."));
+            return null;
+          });
+    async function run() {
+      while (queue.length && live()) {
+        const item = queue.shift();
+        const data = await item.audio;
+        if (!live()) break;
+        if (r.current.phase !== "speaking") setPhase("speaking");
+        setCaption(item.text);
+        emit("say", { text: item.text });
+        try {
+          if (data) await playBuffer(data);
+          else await speakWithBrowser(item.text);
+        } catch {
+          await speakWithBrowser(item.text);
+        }
+      }
+      loop = null;
     }
-    setCaption("");
-    if (r.current.phase === "speaking" && r.current.alive) {
-      setPhase("waiting");
-      if (Recognition && r.current.active) listen();
+    function enqueue(text) {
+      text = text.trim();
+      if (!text) return;
+      queue.push({ text, audio: fetchAudio(text) });
+      if (!loop) loop = run();
     }
+    return {
+      feed(full) {
+        if (firstEnd) return;
+        const k = full.slice(18).search(/[.!?؟،:]\s/);
+        if (k >= 0) {
+          firstEnd = 18 + k + 1;
+          enqueue(full.slice(0, firstEnd));
+        }
+      },
+      async finish(full) {
+        enqueue(full.slice(firstEnd));
+        while (loop) await loop;
+        setCaption("");
+        if (live() && r.current.phase === "speaking") {
+          setPhase("waiting");
+          if (Recognition && r.current.active) listen();
+        }
+      },
+    };
   }
+  const say = (text) => createSpeaker().finish(text);
 
   // ---------- الاستماع ----------
   function listen() {
@@ -196,6 +242,7 @@ export function useMeetingVoice({ period, getRoom }) {
     if (userText) history.push({ role: "user", text: userText });
     setPhase("thinking");
     pushLine({ role: "model", text: "…" });
+    const speaker = createSpeaker();
     try {
       const text = await ask({
         facts: r.current.facts,
@@ -204,11 +251,14 @@ export function useMeetingVoice({ period, getRoom }) {
         history: history.slice(-13, userText ? -1 : undefined),
         previousMeeting: mode === "meeting_open" ? previousMeeting() : undefined,
         signal: abort.signal,
-        onToken: (t) => updateLast({ text: plain(t) }),
+        onToken: (t) => {
+          updateLast({ text: plain(t) });
+          speaker.feed(plain(t));
+        },
       });
       updateLast({ text: plain(text) });
       history.push({ role: "model", text });
-      await say(plain(text));
+      await speaker.finish(plain(text));
     } catch (e) {
       if (e.name === "AbortError") return;
       updateLast({ text: e.message, error: true });
