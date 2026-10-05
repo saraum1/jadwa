@@ -43,6 +43,8 @@
 @keyframes voice-blink{50%{opacity:.35}}
 .voice-controls{display:flex;gap:8px;flex-wrap:wrap}
 .voice-controls button,.voice-plan .voice-start{border:0;border-radius:10px;padding:10px 18px;font:inherit;font-size:14px;cursor:pointer}
+.voice-mode-toggle{background:#f1f5f9;color:#334155;border:1px solid #cbd5e1!important;display:inline-flex;align-items:center;gap:4px;font-size:13px;font-weight:500}
+.voice-mode-toggle:hover{background:#e2e8f0;color:#0f172a}
 .voice-start{background:#2563eb;color:#fff}.voice-start:hover{background:#1d4ed8}
 .voice-mic{background:#0f172a;color:#fff;min-width:110px}.voice-mic[aria-pressed="true"]{background:#ef4444}
 .voice-mic:disabled{opacity:.5;cursor:wait}

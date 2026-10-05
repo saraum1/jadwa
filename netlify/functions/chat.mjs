@@ -41,7 +41,8 @@ export default async (req) => {
 
     // سقف مرتفع لأن توكنز «التفكير» تُحسب منه؛ طول الرد الفعلي تحدده التعليمات.
     const maxTokens = mode === 'chat' ? 1500 : 900;
-    const stream = await generateStream(system, contents, { maxTokens });
+    const fast = mode.startsWith('meeting');
+    const stream = await generateStream(system, contents, { maxTokens, fast });
     return new Response(stream, { headers: { 'content-type': 'text/plain; charset=utf-8', 'cache-control': 'no-store' } });
   } catch (err) {
     return errorResponse(err);

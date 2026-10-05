@@ -57,16 +57,20 @@ function textFrom(json) {
   return parts.filter(p => !p.thought && typeof p.text === 'string').map(p => p.text).join('');
 }
 
-function request(system, contents, { maxTokens = 700, json = false } = {}) {
+function request(system, contents, { maxTokens = 700, json = false, fast = false } = {}) {
+  const generationConfig = {
+    temperature: 0.3,
+    maxOutputTokens: maxTokens,
+    ...(json ? { responseMimeType: 'application/json' } : {})
+  };
+  // في المكالمات الصوتية المباشرة (fast: true) نتجنب التفكير لتسريع استجابة أول كلمة فوراً
+  if (!fast) {
+    generationConfig.thinkingConfig = { thinkingLevel: 'low' };
+  }
   return {
     systemInstruction: { parts: [{ text: system }] },
     contents,
-    generationConfig: {
-      temperature: 0.3,
-      maxOutputTokens: maxTokens,
-      thinkingConfig: { thinkingLevel: 'low' },
-      ...(json ? { responseMimeType: 'application/json' } : {})
-    }
+    generationConfig
   };
 }
 

@@ -43,7 +43,34 @@ export function useMeetingVoice({ period, getRoom }) {
   const [plan, setPlan] = useState(null);
   const [active, setActive] = useState(false);
   const [note, setNote] = useState("");
-  const r = useRef({ phase: "idle", history: [], facts: undefined, audioCtx: null, source: null, recognizer: null, abort: null, browserVoice: false, active: false, alive: true });
+  const [voiceMode, setVoiceModeState] = useState(() => {
+    try {
+      return localStorage.getItem("jadwa_voice_mode") || "fast";
+    } catch {
+      return "fast";
+    }
+  });
+
+  const r = useRef({
+    phase: "idle",
+    history: [],
+    facts: undefined,
+    audioCtx: null,
+    source: null,
+    recognizer: null,
+    abort: null,
+    browserVoice: voiceMode === "fast",
+    active: false,
+    alive: true,
+  });
+
+  function setVoiceMode(mode) {
+    setVoiceModeState(mode);
+    r.current.browserVoice = mode === "fast";
+    try {
+      localStorage.setItem("jadwa_voice_mode", mode);
+    } catch {}
+  }
 
   const face = (v) => getRoom()?.setFace?.(v);
   const mouth = (level) => {
@@ -102,8 +129,12 @@ export function useMeetingVoice({ period, getRoom }) {
   function speakWithBrowser(text) {
     return new Promise((resolve) => {
       if (!window.speechSynthesis) return resolve();
+      try {
+        window.speechSynthesis.cancel();
+      } catch {}
       const u = new SpeechSynthesisUtterance(text);
       u.lang = "ar-SA";
+      u.rate = 1.05; // نطق أسرع وأكثر حيوية
       const voices = speechSynthesis.getVoices();
       u.voice = voices.find((v) => v.lang === "ar-SA") || voices.find((v) => v.lang.startsWith("ar")) || null;
       let talking = true,
@@ -167,9 +198,10 @@ export function useMeetingVoice({ period, getRoom }) {
     return {
       feed(full) {
         if (firstEnd) return;
-        const k = full.slice(18).search(/[.!?؟،:]\s/);
+        // اقتطاع أول جملة أو فاصلة بعد 8 أحرف لبدء الصوت دون انتظار اكتمال الفقرة
+        const k = full.slice(8).search(/[.!?؟،:\n]\s?/);
         if (k >= 0) {
-          firstEnd = 18 + k + 1;
+          firstEnd = 8 + k + 1;
           enqueue(full.slice(0, firstEnd));
         }
       },
@@ -197,6 +229,7 @@ export function useMeetingVoice({ period, getRoom }) {
     rec.interimResults = true;
     rec.continuous = false;
     let finalText = "",
+      lastSpoken = "",
       started = false;
     rec.onresult = (e) => {
       let interim = "";
@@ -204,11 +237,12 @@ export function useMeetingVoice({ period, getRoom }) {
         if (e.results[i].isFinal) finalText += e.results[i][0].transcript;
         else interim += e.results[i][0].transcript;
       }
-      setCaption(finalText + interim);
+      lastSpoken = (finalText + interim).trim();
+      setCaption(lastSpoken);
       if (!started) {
         started = true;
-        pushLine({ role: "user", text: finalText + interim });
-      } else updateLast({ text: finalText + interim });
+        pushLine({ role: "user", text: lastSpoken });
+      } else updateLast({ text: lastSpoken });
     };
     rec.onerror = (e) => {
       if (e.error === "not-allowed" || e.error === "service-not-allowed") setNote("اسمحي للمتصفح باستخدام الميكروفون، أو اكتبي سؤالك.");
@@ -216,7 +250,7 @@ export function useMeetingVoice({ period, getRoom }) {
     rec.onend = () => {
       if (r.current.recognizer === rec) r.current.recognizer = null;
       setCaption("");
-      const text = finalText.trim();
+      const text = (finalText.trim() || lastSpoken).trim();
       if (text) {
         updateLast({ text });
         respond(text);
@@ -340,7 +374,7 @@ export function useMeetingVoice({ period, getRoom }) {
     };
   }, []);
 
-  return { phase, status, lines, caption, plan, active, note, start, end, toggleMic, sendText, canListen: !!Recognition };
+  return { phase, status, lines, caption, plan, active, note, start, end, toggleMic, sendText, canListen: !!Recognition, voiceMode, setVoiceMode };
 }
 
 export function VoicePanel({ voice }) {
@@ -359,6 +393,14 @@ export function VoicePanel({ voice }) {
           <span role="status">{voice.status}</span>
         </div>
         <div className="voice-controls">
+          <button
+            type="button"
+            className="voice-mode-toggle"
+            title={voice.voiceMode === "fast" ? "وضع الصوت الفوري: استجابة سريعة جداً بدون انتظار الخادم" : "وضع الاستوديو: نبرة صوت طبيعية فائقة الجودة من Gemini"}
+            onClick={() => voice.setVoiceMode(voice.voiceMode === "fast" ? "studio" : "fast")}
+          >
+            {voice.voiceMode === "fast" ? "⚡ صوت فوري" : "🎙 استوديو"}
+          </button>
           {!voice.active && voice.phase !== "closing" && (
             <button className="voice-start" onClick={voice.start} disabled={voice.phase === "loading"}>
               {voice.plan ? "اجتماع جديد" : "ابدئي الاجتماع"}
@@ -366,7 +408,7 @@ export function VoicePanel({ voice }) {
           )}
           {voice.active && voice.canListen && (
             <button className="voice-mic" aria-pressed={voice.phase === "listening"} disabled={busy} onClick={voice.toggleMic}>
-              <span aria-hidden="true">🎙</span> {voice.phase === "listening" ? "إيقاف" : "تكلّمي"}
+              <span aria-hidden="true">🎙</span> {voice.phase === "listening" ? "إرسال الآن ⏎" : "تكلّمي"}
             </button>
           )}
           {voice.active && (
