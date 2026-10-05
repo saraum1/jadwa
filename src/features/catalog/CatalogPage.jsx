@@ -18,6 +18,7 @@ import { catalogService } from "./services/catalogService.js";
 import { useAuth } from "../../shared/lib/authContext.jsx";
 import { computeAvatarInitial } from "../../shared/types/dto.js";
 import { openAskJadwa } from "../ai/client.js";
+import { usePeriodFacts, getSourceLabel } from "../ai/usePeriodFacts.js";
 
 export default function CatalogPage() {
   const { user, loading: authLoading, logout } = useAuth();
@@ -74,19 +75,99 @@ export default function CatalogPage() {
     };
   }, [month, authLoading, user, isGuest]);
 
+  const { facts, source: factsSource, loading: factsLoading } = usePeriodFacts(month);
+  const isFactsFiles = facts && facts.source === "files";
+
+  const fileProducts = isFactsFiles && facts.products
+    ? facts.products.map((p) => {
+        let status = "normal";
+        if (p.cost === null) status = "missing";
+        else if (p.profit !== null && p.profit < 0) status = "loss";
+        else if (p.margin !== null && p.margin < marginTarget) status = "low";
+
+        return {
+          id: p.code,
+          code: p.code,
+          name: p.name,
+          group: "منتجات",
+          qty: p.qty,
+          sales: p.sales,
+          cost: p.cost,
+          profit: p.profit,
+          margin: p.margin,
+          avgPrice: p.avgPrice,
+          unitCost: p.unitCost,
+          status,
+          opportunities: p.profit !== null && p.profit < 0 ? [1] : [],
+          parts: null,
+          stocks: null,
+          __isFactFile: true,
+          [month]: { qty: p.qty, sales: p.sales, cost: p.cost },
+        };
+      })
+    : null;
+
+  const fileStock = isFactsFiles && facts.inventory
+    ? facts.inventory.map((i) => {
+        const days = month === "aug" ? 31 : 30;
+        const daily = i.used > 0 ? i.used / days : 0;
+        const coverage = daily > 0 ? Math.round((i.endBalance / daily) * 10) / 10 : null;
+        let status = "normal";
+        if (i.wasteCost > 0 || i.waste > 0) status = "waste";
+        else if (coverage === null && i.used === 0) status = "slow";
+        else if (coverage !== null && coverage < 5) status = "low";
+        else if (coverage !== null && coverage > 15) status = "excess";
+
+        return {
+          id: i.code,
+          code: i.code,
+          name: i.name,
+          unit: i.unit || "وحدة",
+          opening: i.opening,
+          incoming: i.incoming,
+          used: i.used,
+          waste: i.waste,
+          adjustment: 0,
+          cost: i.unitCost,
+          unitCost: i.unitCost,
+          available: i.endBalance,
+          endBalance: i.endBalance,
+          value: Math.round(i.endBalance * i.unitCost),
+          wasteCost: i.wasteCost,
+          wasteRatePct: i.wasteRatePct,
+          daily: Math.round(daily * 100) / 100,
+          days,
+          coverage,
+          excessValue: 0,
+          status,
+          lead: 5,
+          target: 15,
+          opportunities: i.wasteCost > 0 ? [0] : [],
+          __isFactFile: true,
+        };
+      })
+    : null;
+
   const displayName = user?.profile?.fullName || (isGuest ? "الشيماء" : (user?.email?.split("@")[0] || "مستخدم"));
   const avatarChar = isGuest
     ? "ش"
     : (computeAvatarInitial(user?.profile?.fullName, user?.email) || (displayName ? displayName.charAt(0) : "م"));
 
-  const source = tab === "products" ? productsList : stockList;
+  const source =
+    tab === "products"
+      ? (fileProducts || productsList)
+      : (fileStock || stockList);
+
+  const pageLoading = isFactsFiles ? factsLoading : (loading || factsLoading);
   const metricsFn = tab === "products" ? productMetrics : stockMetrics;
   const priority =
     tab === "products"
       ? { loss: 0, low: 1, missing: 2, normal: 3 }
       : { low: 0, waste: 1, excess: 2, slow: 3, normal: 4 };
 
-  const full = source.map((p) => ({ ...p, ...metricsFn(p, month) }));
+  const full = source.map((p) =>
+    p.__isFactFile ? p : { ...p, ...metricsFn(p, month) },
+  );
 
   const rows = full
     .filter(
@@ -130,9 +211,9 @@ export default function CatalogPage() {
         ];
 
   useEffect(() => {
-    if (!loading && params.get("item"))
+    if (!pageLoading && params.get("item"))
       setItem(source.find((x) => x.id === params.get("item")) || null);
-  }, [loading, source]);
+  }, [pageLoading, source]);
 
   const reset = () => {
     setQuery("");
@@ -277,7 +358,7 @@ export default function CatalogPage() {
 
   const slots = {
     "mini-avatar": avatarChar,
-    "demo-label": isGuest ? "بيانات توضيحية" : "بيانات المنشأة",
+    "demo-label": getSourceLabel(facts?.source || (isGuest ? "demo" : "database")),
     "topbar-actions": (
       <button
         type="button"
@@ -307,7 +388,7 @@ export default function CatalogPage() {
     "catalog-summary": summaries.map(([icon, title, value, note], i) => (
       <Summary
         key={title}
-        {...{ icon, title, value, note, loading }}
+        {...{ icon, title, value, note, loading: pageLoading }}
         featured={i === 0}
       />
     )),
@@ -321,7 +402,7 @@ export default function CatalogPage() {
     ),
     "catalog-basis":
       tab === "products"
-        ? "الهامش المستهدف: ٢٠٪ · افتراض الديمو"
+        ? (isFactsFiles ? "الهامش المستهدف: ٢٠٪ · محسوب من ملفاتك" : "الهامش المستهدف: ٢٠٪ · افتراض الديمو")
         : "المتاح في نهاية " + months[month].name,
     "catalog-footnote":
       tab === "products"
@@ -330,18 +411,18 @@ export default function CatalogPage() {
     "related-banner":
       related !== null ? (
         <>
-          <span>أصناف مرتبطة بفرصة «{opportunities[related].title}»</span>
+          <span>أصناف مرتبطة بفرصة «{opportunities[related]?.title || "فرصة التحسين"}»</span>
           <button onClick={() => update({ opportunity: null })}>
             إزالة التصفية
           </button>
         </>
       ) : null,
-    "period-footer": (isGuest ? "نسخة تجريبية · " : "فترة ") + months[month].name + " ٢٠٢٦",
+    "period-footer": (facts?.source === "files" ? "ملفات " : (isGuest ? "نسخة تجريبية · " : "فترة ")) + months[month].name + " ٢٠٢٦",
     "catalog-count":
       number(rows.length) + " من " + number(source.length) + " أصناف",
     "catalog-table": (
       <DataTable
-        {...{ headers, loading, sortKey, direction }}
+        {...{ headers, loading: pageLoading, sortKey, direction }}
         rows={cells}
         onSort={sort}
       />
@@ -386,7 +467,7 @@ export default function CatalogPage() {
     "dialog-content": (
       <InfoContent info={w.info} close={() => w.setInfo(null)} />
     ),
-    "loading-status": loading
+    "loading-status": pageLoading
       ? "جاري تحميل بيانات " + (tab === "products" ? "المنتجات" : "المخزون")
       : number(rows.length) + " نتائج",
   };
@@ -394,6 +475,7 @@ export default function CatalogPage() {
   return (
     <View
       active="catalog"
+      loading={pageLoading}
       slots={slots}
       refs={{
         ...w.refs,
@@ -408,11 +490,11 @@ export default function CatalogPage() {
         },
         "catalog-panel": {
           "aria-labelledby": tab + "-tab",
-          "aria-busy": loading,
+          "aria-busy": pageLoading,
         },
-        ".catalog-toolbar": { inert: loading },
-        "catalog-table": { hidden: !loading && !rows.length, inert: loading },
-        "catalog-message": { hidden: loading || !!rows.length },
+        ".catalog-toolbar": { inert: pageLoading },
+        "catalog-table": { hidden: !pageLoading && !rows.length, inert: pageLoading },
+        "catalog-message": { hidden: pageLoading || !!rows.length },
         "related-banner": { hidden: related === null },
         "catalog-search": {
           value: query,

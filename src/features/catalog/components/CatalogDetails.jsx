@@ -38,13 +38,17 @@ export default function CatalogDetails({ item, tab, month }) {
   if (!item) return null;
   const m = months[month],
     p =
-      tab === "products"
-        ? productMetrics(item, month)
-        : stockMetrics(item, month),
+      item.__isFactFile
+        ? item
+        : tab === "products"
+          ? productMetrics(item, month)
+          : stockMetrics(item, month),
     prev =
-      tab === "products" && month === "sep"
-        ? productMetrics(item, "aug")
-        : null,
+      item.__isFactFile
+        ? item.prev || null
+        : tab === "products" && month === "sep"
+          ? productMetrics(item, "aug")
+          : null,
     relatedProducts = catalogProducts.filter((x) =>
       x.stocks?.includes(item.id),
     );
