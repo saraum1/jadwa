@@ -61,7 +61,7 @@ function suggestions(f) {
 
 export default function AskJadwa() {
   const [open, setOpen] = useState(false);
-  const [period] = useState(periodFromUrl);
+  const [period, setPeriod] = useState(periodFromUrl);
   const [facts, setFacts] = useState(undefined); // undefined = لم تُحمّل، null = لا بيانات
   const [history, setHistory] = useState(() => {
     try {
@@ -85,6 +85,7 @@ export default function AskJadwa() {
       document.querySelectorAll("dialog[open]").forEach((d) => d.close());
       setOpen(true);
       if (e.detail?.question) queued.current = e.detail.question;
+      setFacts((prev) => (prev === null ? undefined : prev));
     };
     window.addEventListener("jadwa:open-ask", onOpen);
     return () => window.removeEventListener("jadwa:open-ask", onOpen);
@@ -94,7 +95,11 @@ export default function AskJadwa() {
     if (!open || facts !== undefined) return;
     let alive = true;
     loadFacts(period)
-      .then((f) => alive && setFacts(f))
+      .then((f) => {
+        if (!alive) return;
+        setFacts(f);
+        if (f?.period && f.period !== period) setPeriod(f.period);
+      })
       .catch(() => alive && setFacts(null));
     return () => {
       alive = false;
@@ -154,6 +159,7 @@ export default function AskJadwa() {
     busy.current?.abort();
     setHistory([]);
     setPending(null);
+    setFacts(undefined);
   }
 
   if (!open) return null;

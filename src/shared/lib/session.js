@@ -3,7 +3,11 @@ export const JadwaSession = (() => {
   const key = "jadwa-prepared-files-v1";
   function files() {
     try {
-      const value = JSON.parse(sessionStorage.getItem(key) || "[]");
+      let raw = sessionStorage.getItem(key);
+      if (!raw && typeof localStorage !== "undefined") {
+        raw = localStorage.getItem(key);
+      }
+      const value = JSON.parse(raw || "[]");
       if (!Array.isArray(value)) return [];
       return value.filter(
         (f) =>
@@ -33,6 +37,9 @@ export const JadwaSession = (() => {
       );
     try {
       sessionStorage.setItem(key, json);
+      if (typeof localStorage !== "undefined") {
+        localStorage.setItem(key, json);
+      }
     } catch {
       throw new Error(
         "تعذر الاحتفاظ بالملفات في هذا التبويب. اسمح بتخزين بيانات الموقع أو جرّب ملفًا أصغر، ثم أعد التأكيد.",
@@ -42,6 +49,9 @@ export const JadwaSession = (() => {
   function clear() {
     try {
       sessionStorage.removeItem(key);
+      if (typeof localStorage !== "undefined") {
+        localStorage.removeItem(key);
+      }
     } catch {}
   }
   const forPeriod = (period) =>

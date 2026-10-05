@@ -22,23 +22,19 @@ export const dataHubService = {
         }
         const { data, error } = await query;
 
-        if (!error && data) {
+        if (!error && data && data.length > 0) {
           const remoteFiles = data.map(toDataHubFileDTO);
-          return period ? remoteFiles.filter((f) => f.result?.period === period) : remoteFiles;
+          const matched = period ? remoteFiles.filter((f) => f.result?.period === period) : remoteFiles;
+          if (matched.length > 0) return matched;
         }
-        return [];
       } catch (err) {
         console.warn("[Data Hub Service] Error reading remote files:", err);
-        return [];
       }
     }
 
-    if (isGuest) {
-      const sessionFiles = JadwaSession.files();
-      return period ? JadwaSession.forPeriod(period) : sessionFiles;
-    }
-
-    return [];
+    // Always fallback to session files if no remote files found
+    const sessionFiles = JadwaSession.files();
+    return period ? JadwaSession.forPeriod(period) : sessionFiles;
   },
 
   /**

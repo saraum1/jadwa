@@ -54,11 +54,28 @@ async function databaseDataset(period) {
   };
 }
 
+import { normalizeDataHubRow } from "../../shared/types/dto.js";
+
 async function datasetFor(period, isGuest) {
   let files = await dataHubService.getFiles(period, isGuest).catch(() => []);
   // لو ما انحفظت الملفات في Supabase، نستخدم الملفات المجهزة في هذا التبويب
   if (!files.length) files = JadwaSession.forPeriod(period);
-  if (files.length) return fromFiles(period, files);
+  if (files.length) {
+    const preparedFiles = files.map((f) => {
+      if (!f.result || !Array.isArray(f.result.valid)) return f;
+      const valid = f.result.valid.map((r) =>
+        normalizeDataHubRow(r, f.type, f.result.period || period, f.mapping || {}),
+      );
+      return {
+        ...f,
+        result: {
+          ...f.result,
+          valid,
+        },
+      };
+    });
+    return fromFiles(period, preparedFiles);
+  }
   if (isGuest) return demoDataset(period);
   return databaseDataset(period).catch(() => null);
 }
@@ -67,9 +84,27 @@ async function datasetFor(period, isGuest) {
 export async function loadFacts(period) {
   const user = await authService.getCurrentUser().catch(() => null);
   const isGuest = !user || Boolean(user.isGuest);
-  const ds = await datasetFor(period, isGuest);
+  let activePeriod = period;
+  let ds = await datasetFor(activePeriod, isGuest);
+
+  // إذا لم نجد بيانات للفترة المحددة، نبحث إن كان للمستخدم ملفات في أي فترة أخرى
+  if (!ds) {
+    const allFiles = await dataHubService.getFiles(null, isGuest).catch(() => []);
+    const availablePeriods = [...new Set(allFiles.map((f) => f.result?.period).filter(Boolean))].sort().reverse();
+    for (const p of availablePeriods) {
+      if (p !== activePeriod) {
+        const altDs = await datasetFor(p, isGuest);
+        if (altDs) {
+          activePeriod = p;
+          ds = altDs;
+          break;
+        }
+      }
+    }
+  }
+
   if (!ds) return null;
-  const prev = await datasetFor(previousPeriod(period), isGuest);
+  const prev = await datasetFor(previousPeriod(activePeriod), isGuest);
   const facts = analyze(ds, prev);
   facts.business = user?.profile?.businessName || null;
   return facts;

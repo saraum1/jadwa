@@ -167,9 +167,80 @@ export function toExpenseDTO(row) {
 }
 
 /**
+ * Normalizes a data row to ensure it has { values: {...}, period, line }
+ * compatible with the AI engine and frontend previews.
+ */
+export function normalizeDataHubRow(item, type, period, mapping = {}) {
+  if (item && item.values && typeof item.values === "object") {
+    const v = { ...item.values };
+    if (!v.date && (type === "inventory" || type === "expenses")) {
+      v.date = period ? period + "-01" : "2026-09-01";
+    }
+    return { ...item, values: v, period: item.period || period };
+  }
+
+  const raw = item && typeof item === "object" ? item : {};
+  const get = (aliases) => {
+    for (const a of aliases) {
+      if (raw[a] !== undefined && raw[a] !== null && raw[a] !== "") return raw[a];
+      const mapped = mapping[a];
+      if (mapped && raw[mapped] !== undefined && raw[mapped] !== null && raw[mapped] !== "") return raw[mapped];
+    }
+    return undefined;
+  };
+
+  const values = {};
+  if (type === "sales") {
+    values.date = get(["date", "التاريخ"]) || (period ? period + "-01" : "2026-09-01");
+    values.code = String(get(["code", "product_code", "رمز المنتج", "الكود", "product", "المنتج"]) || "");
+    values.name = String(get(["name", "المنتج", "اسم المنتج"]) || values.code);
+    values.qty = Number(get(["qty", "الكمية", "العدد"])) || 0;
+    values.sales = Number(get(["sales", "net_sales", "المبيعات", "صافي المبيعات"])) || 0;
+  } else if (type === "costs") {
+    values.period = String(get(["period", "الفترة", "الشهر"]) || period || "2026-09");
+    values.code = String(get(["code", "product_code", "product", "رمز المنتج", "المنتج", "الصنف"]) || "");
+    const uc = get(["unitCost", "unit_cost", "التكلفة للوحدة", "سعر الوحدة", "تكلفة الوحدة"]);
+    const tc = get(["totalCost", "total_cost", "إجمالي التكلفة", "التكلفة"]);
+    if (uc !== undefined) values.unitCost = Number(uc) || 0;
+    if (tc !== undefined) values.totalCost = Number(tc) || 0;
+  } else if (type === "inventory") {
+    values.date = get(["date", "التاريخ"]) || (period ? period + "-28" : "2026-09-28");
+    values.code = String(get(["code", "item", "الصنف", "رمز الصنف", "الكود"]) || "");
+    values.name = String(get(["name", "الصنف", "اسم الصنف", "item"]) || values.code);
+    values.unit = String(get(["unit", "الوحدة"]) || "كجم");
+    values.opening = Number(get(["opening", "رصيد أول", "رصيد البداية"])) || 0;
+    values.incoming = Number(get(["incoming", "وارد", "المستلم"])) || 0;
+    values.used = Number(get(["used", "مستخدم", "الاستهلاك"])) || 0;
+    values.waste = Number(get(["waste", "هدر", "الهدر", "التالف"])) || 0;
+    values.adjustment = Number(get(["adjustment", "تسوية", "التسويات"])) || 0;
+    const uc = get(["unitCost", "unit_cost", "التكلفة للوحدة", "سعر الوحدة", "cost"]);
+    if (uc !== undefined) values.unitCost = Number(uc) || 0;
+  } else if (type === "expenses") {
+    const day = get(["day", "اليوم"]);
+    values.date = get(["date", "التاريخ"]) || (day ? (period || "2026-09") + "-" + String(day).padStart(2, "0") : (period ? period + "-01" : "2026-09-01"));
+    values.name = String(get(["name", "البند", "المصروف", "الوصف"]) || "مصروف");
+    values.amount = Number(get(["amount", "المبلغ", "القيمة"])) || 0;
+    values.vendor = String(get(["vendor", "المورد", "الجهة"]) || "");
+    values.category = String(get(["category", "التصنيف", "الفئة"]) || "تشغيلي");
+    values.recurring = get(["recurring", "متكرر", "شهري", "التكرار"]) ?? true;
+  }
+
+  return {
+    line: raw.line || 1,
+    period: period || "2026-09",
+    values,
+  };
+}
+
+/**
  * Transforms a data hub file row into a session-compatible file DTO
  */
 export function toDataHubFileDTO(row) {
+  const period = row.period_key;
+  const mapping = row.mapping || {};
+  const validRows = Array.isArray(row.valid_rows) ? row.valid_rows : [];
+  const normalizedValid = validRows.map((r) => normalizeDataHubRow(r, row.file_type, period, mapping));
+
   return {
     id: String(row.id),
     type: row.file_type,
@@ -179,12 +250,12 @@ export function toDataHubFileDTO(row) {
     preparedAt: row.prepared_at ? new Date(row.prepared_at).getTime() : Date.now(),
     parsed: {
       headers: row.headers || [],
-      rows: Array.isArray(row.valid_rows) ? row.valid_rows : [],
+      rows: normalizedValid,
     },
     mapping: row.mapping || {},
     result: {
       period: row.period_key,
-      valid: Array.isArray(row.valid_rows) ? row.valid_rows : [],
+      valid: normalizedValid,
       invalid: Array.isArray(row.invalid_rows) ? row.invalid_rows : [],
       issues: Array.isArray(row.issues) ? row.issues : [],
     },
