@@ -42,61 +42,79 @@ export const dataHubService = {
   },
 
   /**
-   * Save a prepared file into Supabase and tab session
+   * Save a prepared file into the tab session and, for signed-in users, Supabase.
+   * Returns { saved: true } when stored in Supabase, { saved: false, reason } otherwise.
    */
   async saveFile(file) {
-    // 1. Update session storage immediately for responsive UI
+    // 1. Session storage first for a responsive UI
     const existing = JadwaSession.files();
     const filtered = existing.filter((f) => f.id !== file.replaces && f.id !== file.id);
     filtered.push(file);
     JadwaSession.save(filtered);
 
-    // 2. Persist to Supabase if available
-    if (isSupabaseConfigured && supabase) {
-      try {
-        const payload = {
-          file_name: file.name,
-          file_type: file.type,
-          file_size: file.size || 0,
-          period_key: file.result.period,
-          origin: file.origin || "upload",
-          headers: file.parsed?.headers || [],
-          mapping: file.mapping || {},
-          valid_count: file.result?.valid?.length || 0,
-          invalid_count: file.result?.invalid?.length || 0,
-          issues: file.result?.issues || [],
-          valid_rows: file.result?.valid || [],
-          invalid_rows: file.result?.invalid || [],
-          prepared_at: new Date(file.preparedAt || Date.now()).toISOString(),
-        };
-
-        if (file.replaces) {
-          // Remove previous replaced file
-          await supabase.from("data_hub_files").delete().eq("id", file.replaces).catch(() => {});
-        }
-
-        await supabase.from("data_hub_files").insert([payload]);
-      } catch (err) {
-        console.warn("[Data Hub Service] Error persisting to Supabase:", err);
+    if (!isSupabaseConfigured || !supabase) return { saved: false, reason: "offline" };
+    try {
+      const { data } = await supabase.auth.getUser();
+      const userId = data?.user?.id;
+      if (!userId) return { saved: false, reason: "no_user" };
+      const payload = {
+        id: isUuid(file.id) ? file.id : undefined,
+        user_id: userId,
+        file_name: file.name,
+        file_type: file.type,
+        file_size: file.size || 0,
+        period_key: file.result.period,
+        origin: file.origin || "upload",
+        headers: file.parsed?.headers || [],
+        mapping: file.mapping || {},
+        valid_count: file.result?.valid?.length || 0,
+        invalid_count: file.result?.invalid?.length || 0,
+        issues: file.result?.issues || [],
+        valid_rows: file.result?.valid || [],
+        invalid_rows: file.result?.invalid || [],
+        prepared_at: new Date(file.preparedAt || Date.now()).toISOString(),
+      };
+      // Replace: remove the previous file of the same source and month
+      if (isUuid(file.replaces)) {
+        await supabase.from("data_hub_files").delete().eq("id", file.replaces);
       }
+      await supabase
+        .from("data_hub_files")
+        .delete()
+        .eq("file_type", file.type)
+        .eq("period_key", file.result.period);
+      const { error } = await supabase.from("data_hub_files").insert([payload]);
+      if (error) {
+        console.warn("[Data Hub Service] Supabase insert failed:", error.message);
+        return { saved: false, reason: error.message };
+      }
+      return { saved: true };
+    } catch (err) {
+      console.warn("[Data Hub Service] Error persisting to Supabase:", err);
+      return { saved: false, reason: err.message };
     }
-
-    return file;
   },
 
   /**
-   * Delete a file
+   * Delete a prepared file from the tab session and Supabase
    */
   async deleteFile(fileId) {
     const updated = JadwaSession.files().filter((f) => f.id !== fileId);
     JadwaSession.save(updated);
-
-    if (isSupabaseConfigured && supabase) {
-      try {
-        await supabase.from("data_hub_files").delete().eq("id", fileId);
-      } catch (err) {
-        console.warn("[Data Hub Service] Error deleting remote file:", err);
-      }
+    if (isSupabaseConfigured && supabase && isUuid(fileId)) {
+      const { error } = await supabase.from("data_hub_files").delete().eq("id", fileId);
+      if (error) console.warn("[Data Hub Service] Error deleting remote file:", error.message);
     }
   },
 };
+
+function isUuid(value) {
+  return typeof value === "string" && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value);
+}
+
+export function newFileId() {
+  if (typeof crypto !== "undefined" && crypto.randomUUID) return crypto.randomUUID();
+  return "10000000-1000-4000-8000-100000000000".replace(/[018]/g, (c) =>
+    (c ^ ((Math.random() * 16) >> (c / 4))).toString(16),
+  );
+}

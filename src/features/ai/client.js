@@ -3,8 +3,19 @@
  * ask(): نفس العقل للشات والاجتماع؛ الاختلاف فقط في mode.
  */
 import { forAI } from "./engine.js";
+import { supabase } from "../../shared/lib/supabase.js";
 
 const API = { chat: "/api/chat", tts: "/api/tts" };
+
+// توكن المستخدم من Supabase: الخادم يرفض الطلبات بدون تسجيل دخول
+async function headers() {
+  const h = { "content-type": "application/json" };
+  try {
+    const token = (await supabase?.auth.getSession())?.data?.session?.access_token;
+    if (token) h.authorization = "Bearer " + token;
+  } catch {}
+  return h;
+}
 
 export class AIError extends Error {
   constructor(message, code) {
@@ -14,6 +25,14 @@ export class AIError extends Error {
 }
 
 async function failure(res) {
+  if (res.status === 401) {
+    try {
+      const j = await res.json();
+      return new AIError(j.error || "سجّلي دخولك أولًا.", "auth");
+    } catch {
+      return new AIError("سجّلي دخولك أولًا.", "auth");
+    }
+  }
   if ([404, 405, 501].includes(res.status))
     return new AIError("الذكاء الاصطناعي يعمل بعد نشر الموقع على Netlify (أو بتشغيل netlify dev محليًا). تشغيل npm run dev وحده لا يشغّل الدوال.", "offline");
   try {
@@ -32,7 +51,7 @@ export async function ask({ facts, mode = "chat", message = "", history = [], pr
     res = await fetch(API.chat, {
       method: "POST",
       signal,
-      headers: { "content-type": "application/json" },
+      headers: await headers(),
       body: JSON.stringify({ mode, message, history, facts: forAI(facts), previousMeeting }),
     });
   } catch (e) {
@@ -59,7 +78,7 @@ export async function speak(text, signal) {
   const res = await fetch(API.tts, {
     method: "POST",
     signal,
-    headers: { "content-type": "application/json" },
+    headers: await headers(),
     body: JSON.stringify({ text }),
   });
   if (!res.ok) throw await failure(res);

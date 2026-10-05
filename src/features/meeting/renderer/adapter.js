@@ -306,77 +306,35 @@ export function mountRoom({ canvas, room, logo, onState }) {
   });
   emit({ loading: true, failed: false, ready: false, motion: clock.enabled });
   (async () => {
-  try {
-    const response = await fetch("/room/scene.json.gz", {
-      signal: abort.signal,
-    });
-
-    console.log("SCENE STATUS:", response.status);
-    console.log("SCENE TYPE:", response.headers.get("content-type"));
-    console.log(
-      "SCENE ENCODING:",
-      response.headers.get("content-encoding"),
-    );
-
-    if (!response.ok) throw Error("Scene unavailable");
-
-    const buffer = await response.arrayBuffer();
-
-    console.log(
-      "FIRST BYTES:",
-      Array.from(new Uint8Array(buffer.slice(0, 20))),
-    );
-
-    console.log("SCENE SIZE:", buffer.byteLength);
-
-    let data;
-
-    const bytes = new Uint8Array(buffer);
-
-    // gzip magic number = 1F 8B
-    const isGzip = bytes[0] === 0x1f && bytes[1] === 0x8b;
-
-    console.log("IS GZIP:", isGzip);
-
-    if (isGzip) {
-      const stream = new Blob([buffer])
-        .stream()
-        .pipeThrough(new DecompressionStream("gzip"));
-
-      const text = await new Response(stream).text();
-
-      console.log("DECOMPRESSED LENGTH:", text.length);
-      console.log("SCENE PREVIEW:", text.slice(0, 200));
-
-      data = JSON.parse(text);
-    } else {
-      const text = new TextDecoder().decode(buffer);
-
-      console.log("RAW JSON LENGTH:", text.length);
-      console.log("RAW JSON PREVIEW:", text.slice(0, 200));
-
-      data = JSON.parse(text);
+    try {
+      const response = await fetch("/room/scene.json.gz", {
+        signal: abort.signal,
+      });
+      if (!response.ok) throw Error("Scene unavailable");
+      let data;
+      if (typeof response.arrayBuffer === "function") {
+        // Some hosts already decompress .gz responses; check the gzip magic bytes.
+        const buffer = await response.arrayBuffer(),
+          bytes = new Uint8Array(buffer);
+        if (bytes[0] === 0x1f && bytes[1] === 0x8b) {
+          const stream = new Blob([buffer])
+            .stream()
+            .pipeThrough(new DecompressionStream("gzip"));
+          data = JSON.parse(await new Response(stream).text());
+        } else data = JSON.parse(new TextDecoder().decode(buffer));
+      } else {
+        const stream = response.body.pipeThrough(
+          new DecompressionStream("gzip"),
+        );
+        data = JSON.parse(await new Response(stream).text());
+      }
+      if (!alive) return;
+      scene = data;
+      await setup();
+    } catch (e) {
+      if (alive && e.name !== "AbortError") fail();
     }
-
-    console.log("SCENE LOADED:", data);
-    console.log("FACES:", data.faces?.length);
-    console.log("CAMERA:", data.camera);
-    console.log("LIGHTING:", data.lighting);
-    console.log("CRADLE:", data.cradle);
-
-    if (!alive) return;
-
-    scene = data;
-    await setup();
-
-  } catch (e) {
-    console.error("MEETING ROOM ERROR:", e);
-
-    if (alive && e.name !== "AbortError") {
-      fail();
-    }
-  }
-})();
+  })();
   return {
     setFace,
     setAngle,

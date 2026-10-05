@@ -1,3 +1,4 @@
+import { useState, useEffect } from "react";
 import { HubData } from "../model/csv.js";
 import { number, Icon } from "../../../shared/ui/primitives.jsx";
 export const monthName = (p) =>
@@ -93,7 +94,9 @@ export function FileSummary({ file: d }) {
     </dl>
   );
 }
-export default function FileDetails({ file: f, onReplace }) {
+export default function FileDetails({ file: f, onReplace, onDelete }) {
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  useEffect(() => setConfirmDelete(false), [f?.id]);
   if (!f) return null;
   return (
     <>
@@ -102,7 +105,7 @@ export default function FileDetails({ file: f, onReplace }) {
       <p className="hub-small">
         {f.origin === "demo"
           ? "عينة توضيحية مصغرة لتجربة الاستيراد، وليست ملفات التحليلات الحالية."
-          : "قراءة محلية لملفك. لا توجد نسخة محفوظة على خادم."}
+          : "ملفك محفوظ في حسابك (أو في هذا التبويب للزائر)."}
       </p>
       <h3>الأعمدة المطابقة</h3>
       <dl className="hub-confirm">
@@ -124,6 +127,15 @@ export default function FileDetails({ file: f, onReplace }) {
       <button className="hub-secondary" onClick={() => onReplace(f)}>
         اختيار ملف بديل
       </button>
+      {onDelete && (
+        <button
+          className="hub-secondary"
+          style={{ marginInlineStart: 8, color: "#b42318", borderColor: "#f3c5bc" }}
+          onClick={() => (confirmDelete ? onDelete(f) : setConfirmDelete(true))}
+        >
+          {confirmDelete ? "تأكيد حذف الملف" : "حذف الملف"}
+        </button>
+      )}
     </>
   );
 }

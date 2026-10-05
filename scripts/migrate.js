@@ -2,6 +2,7 @@ import pg from "pg";
 import { readFileSync } from "node:fs";
 import { resolve, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
+const DB_HOST = process.env.SUPABASE_DB_HOST || "db.tplycvnvheakhgefcoud.supabase.co";
 
 const { Client } = pg;
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -32,7 +33,7 @@ async function runMigration() {
     }
 
     client = new Client({
-      host: "db.tplycvnvheakhgefcoud.supabase.co",
+      host: DB_HOST,
       port: 5432,
       database: "postgres",
       user: "postgres",
@@ -47,7 +48,7 @@ async function runMigration() {
   );
   const sql = readFileSync(migrationPath, "utf8");
 
-  console.log("Connecting to Supabase PostgreSQL at db.tplycvnvheakhgefcoud.supabase.co...");
+  console.log("Connecting to Supabase PostgreSQL at " + DB_HOST + "...");
   try {
     await client.connect();
     console.log("Connected successfully!");

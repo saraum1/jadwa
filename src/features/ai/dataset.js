@@ -9,6 +9,7 @@ import { expenseRecords, expenseCategories, expenseDate } from "../../shared/dat
 import { months } from "../../shared/data/demo.js";
 import { authService } from "../auth/services/authService.js";
 import { dataHubService } from "../data-hub/services/dataHubService.js";
+import { JadwaSession } from "../../shared/lib/session.js";
 import { catalogService } from "../catalog/services/catalogService.js";
 import { expensesService } from "../expenses/services/expensesService.js";
 
@@ -54,7 +55,9 @@ async function databaseDataset(period) {
 }
 
 async function datasetFor(period, isGuest) {
-  const files = await dataHubService.getFiles(period, isGuest).catch(() => []);
+  let files = await dataHubService.getFiles(period, isGuest).catch(() => []);
+  // لو ما انحفظت الملفات في Supabase، نستخدم الملفات المجهزة في هذا التبويب
+  if (!files.length) files = JadwaSession.forPeriod(period);
   if (files.length) return fromFiles(period, files);
   if (isGuest) return demoDataset(period);
   return databaseDataset(period).catch(() => null);

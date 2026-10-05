@@ -36,7 +36,6 @@ function OpportunityDetails({ id, month, s, o, transition }) {
   const m = months[month],
     step = workflow.indexOf(s.status),
     [mode, setMode] = useState("detail"),
-    [context, setContext] = useState(""),
     [error, setError] = useState(""),
     form = useRef(),
     title = useRef(),
@@ -223,13 +222,6 @@ function OpportunityDetails({ id, month, s, o, transition }) {
       >
         <Icon name="spark" />اسأل جدوى عن هذه الفرصة
       </button>
-      <div
-        id="context-response"
-        className="context-response"
-        aria-live="polite"
-      >
-        {context}
-      </div>
       {mode === "dismiss" ? (
         <form
           id="dismiss-form"

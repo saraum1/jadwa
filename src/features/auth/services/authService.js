@@ -36,7 +36,8 @@ export const authService = {
       const stored = localStorage.getItem(LOCAL_SESSION_KEY);
       if (stored) {
         const parsed = JSON.parse(stored);
-        if (parsed && parsed.isGuest) {
+        // زائر محلي، أو مستخدم محلي عندما لا يكون Supabase مضبوطًا (تشغيل تطويري)
+        if (parsed && (parsed.isGuest || (!isSupabaseConfigured && parsed.id && parsed.local))) {
           return parsed;
         }
       }
@@ -213,20 +214,27 @@ export const authService = {
     } catch {}
 
     if (!isSupabaseConfigured || !supabase) {
-      const avatarInitial = computeAvatarInitial(email.split("@")[0], email);
+      // وضع تطويري بدون Supabase: مستخدم محلي ثابت المعرّف ومحفوظ حتى تحديث الصفحة
+      const isDemo = email === DEMO_CREDENTIALS.email;
+      const fullName = isDemo ? "الشيماء" : email.split("@")[0] || "مستخدم جديد";
+      const id = "local-" + Array.from(email.toLowerCase()).reduce((h, c) => (h * 31 + c.charCodeAt(0)) >>> 0, 7).toString(36);
       const mockUser = {
-        id: "usr-" + Date.now(),
+        id,
         email,
+        local: true,
         profile: {
-          id: "usr-" + Date.now(),
-          fullName: email.split("@")[0] || "مستخدم جديد",
+          id,
+          fullName,
           businessName: "منشأتي",
           businessType: "مقهى ومطعم",
           role: "مالكة المنشأة",
-          avatarInitial,
+          avatarInitial: isDemo ? "ش" : computeAvatarInitial(fullName, email),
         },
         isGuest: false,
       };
+      try {
+        localStorage.setItem(LOCAL_SESSION_KEY, JSON.stringify(mockUser));
+      } catch {}
       return { user: mockUser, error: null };
     }
 

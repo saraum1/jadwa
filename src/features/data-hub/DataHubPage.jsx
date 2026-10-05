@@ -11,7 +11,7 @@ import FileDetails, {
   FileSummary,
 } from "./components/FileDetails.jsx";
 import { JadwaSession } from "../../shared/lib/session.js";
-import { dataHubService } from "./services/dataHubService.js";
+import { dataHubService, newFileId } from "./services/dataHubService.js";
 import { csvFileMetaSchema } from "./schemas/dataHubSchemas.js";
 import {
   useQuery,
@@ -235,11 +235,7 @@ export default function DataHubPage() {
         }
         const f = {
             ...draft,
-            id:
-              "file-" +
-              Date.now() +
-              "-" +
-              Math.random().toString(36).slice(2, 8),
+            id: newFileId(),
             preparedAt: Date.now(),
           },
           nextFiles = structuredClone(files).filter(
@@ -273,7 +269,13 @@ export default function DataHubPage() {
             }
         }
         JadwaSession.save(nextFiles);
-        dataHubService.saveFile(f).catch(() => {});
+        dataHubService
+          .saveFile(f)
+          .then((r) => {
+            if (!isGuest && r && !r.saved)
+              showToast("تجهّز الملف في هذا التبويب، لكن تعذر حفظه في حسابك. حاولي مرة ثانية.");
+          })
+          .catch(() => {});
         setFiles(nextFiles);
         setPeriod(f.result.period);
         closeImport();
@@ -548,6 +550,12 @@ export default function DataHubPage() {
           setPeriod(f.result.period);
           setDetail(null);
           openImport(f.type);
+        }}
+        onDelete={async (f) => {
+          await dataHubService.deleteFile(f.id).catch(() => {});
+          setFiles((items) => items.filter((x) => x.id !== f.id));
+          setDetail(null);
+          showToast("حُذف الملف «" + f.name + "».");
         }}
       />
     ),

@@ -26,6 +26,8 @@ export function useLandingMotion(refs) {
       timers = [];
     let finished = false,
       observer;
+    // العناصر قد تختفي عند إلغاء التركيب السريع؛ لا نحرك شيئًا غير موجود
+    if (!intro || !logo) return;
     function finish() {
       if (finished) return;
       finished = true;
