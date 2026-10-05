@@ -43,13 +43,8 @@ export function useMeetingVoice({ period, getRoom }) {
   const [plan, setPlan] = useState(null);
   const [active, setActive] = useState(false);
   const [note, setNote] = useState("");
-  const [voiceMode, setVoiceModeState] = useState(() => {
-    try {
-      return localStorage.getItem("jadwa_voice_mode") || "fast";
-    } catch {
-      return "fast";
-    }
-  });
+  // صوت Gemini الطبيعي دائمًا؛ صوت المتصفح احتياطي فقط عند فشل الخدمة
+  const [voiceMode, setVoiceModeState] = useState("natural");
 
   const r = useRef({
     phase: "idle",
@@ -59,7 +54,7 @@ export function useMeetingVoice({ period, getRoom }) {
     source: null,
     recognizer: null,
     abort: null,
-    browserVoice: voiceMode === "fast",
+    browserVoice: false,
     active: false,
     alive: true,
   });
