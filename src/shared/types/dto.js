@@ -170,13 +170,18 @@ export function toExpenseDTO(row) {
  * Normalizes a data row to ensure it has { values: {...}, period, line }
  * compatible with the AI engine and frontend previews.
  */
-export function normalizeDataHubRow(item, type, period, mapping = {}) {
+export function normalizeDataHubRow(item, type, period, mapping = {}, headers = []) {
   if (item && item.values && typeof item.values === "object") {
     const v = { ...item.values };
     if (!v.date && (type === "inventory" || type === "expenses")) {
       v.date = period ? period + "-01" : "2026-09-01";
     }
-    return { ...item, values: v, period: item.period || period };
+    const cells = Array.isArray(item.cells)
+      ? item.cells
+      : headers.length
+        ? headers.map((h) => item[h] ?? v[h] ?? "")
+        : Object.values(v);
+    return { ...item, values: v, period: item.period || period, cells };
   }
 
   const raw = item && typeof item === "object" ? item : {};
@@ -225,10 +230,17 @@ export function normalizeDataHubRow(item, type, period, mapping = {}) {
     values.recurring = get(["recurring", "متكرر", "شهري", "التكرار"]) ?? true;
   }
 
+  const cells = Array.isArray(raw.cells)
+    ? raw.cells
+    : headers.length
+      ? headers.map((h) => raw[h] ?? values[h] ?? "")
+      : Object.values(raw);
+
   return {
     line: raw.line || 1,
     period: period || "2026-09",
     values,
+    cells,
   };
 }
 
@@ -237,9 +249,26 @@ export function normalizeDataHubRow(item, type, period, mapping = {}) {
  */
 export function toDataHubFileDTO(row) {
   const period = row.period_key;
-  const mapping = row.mapping || {};
+  const headers = Array.isArray(row.headers) ? row.headers : [];
+  const rawMapping = row.mapping && typeof row.mapping === "object" ? row.mapping : {};
+
+  // Standardize mapping to schema fields
+  const mapping = { ...rawMapping };
+  if (mapping.code === undefined && mapping.product !== undefined) mapping.code = mapping.product;
+  if (mapping.code === undefined && mapping.item !== undefined) mapping.code = mapping.item;
+  if (mapping.unitCost === undefined && mapping.unit_cost !== undefined) mapping.unitCost = mapping.unit_cost;
+  if (mapping.totalCost === undefined && mapping.total_cost !== undefined) mapping.totalCost = mapping.total_cost;
+
+  // Map header name strings to indices if headers present
+  for (const [k, v] of Object.entries(mapping)) {
+    if (typeof v === "string") {
+      const idx = headers.indexOf(v);
+      if (idx >= 0) mapping[k] = idx;
+    }
+  }
+
   const validRows = Array.isArray(row.valid_rows) ? row.valid_rows : [];
-  const normalizedValid = validRows.map((r) => normalizeDataHubRow(r, row.file_type, period, mapping));
+  const normalizedValid = validRows.map((r) => normalizeDataHubRow(r, row.file_type, period, mapping, headers));
 
   return {
     id: String(row.id),
@@ -249,10 +278,10 @@ export function toDataHubFileDTO(row) {
     origin: row.origin || "upload",
     preparedAt: row.prepared_at ? new Date(row.prepared_at).getTime() : Date.now(),
     parsed: {
-      headers: row.headers || [],
+      headers,
       rows: normalizedValid,
     },
-    mapping: row.mapping || {},
+    mapping,
     result: {
       period: row.period_key,
       valid: normalizedValid,

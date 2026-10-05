@@ -91,15 +91,15 @@ export default function DataHubPage() {
     if (dialog.current) dialog.current.scrollTop = 0;
   }, [step]);
   const recordFor = (t, p = activePeriod, items = files) =>
-      items.find((f) => f.type === t && f.result.period === p),
-    shown = files.filter((f) => f.result.period === activePeriod),
-    review = shown.filter((f) => warnCount(f.result)),
+      items.find((f) => f.type === t && f.result?.period === p),
+    shown = files.filter((f) => f.result?.period === activePeriod),
+    review = shown.filter((f) => f.result && warnCount(f.result)),
     periods = [
       ...new Set([
         "2026-08",
         "2026-09",
         activePeriod,
-        ...files.map((f) => f.result.period),
+        ...files.map((f) => f.result?.period).filter(Boolean),
       ]),
     ]
       .sort()
@@ -396,7 +396,7 @@ export default function DataHubPage() {
             {f
               ? f.name +
                 " · " +
-                number(f.result.valid.length) +
+                number(f.result?.valid?.length || 0) +
                 " سجل" +
                 (f.origin === "demo" ? " · عينة توضيحية" : "")
               : "المطلوب: " +
@@ -468,9 +468,9 @@ export default function DataHubPage() {
                   </small>
                 </div>
               </td>
-              <td data-label="المصدر">{schemas[f.type].label}</td>
-              <td data-label="الفترة">{monthName(f.result.period)}</td>
-              <td data-label="السجلات">{number(f.result.valid.length)}</td>
+              <td data-label="المصدر">{schemas[f.type]?.label || f.type}</td>
+              <td data-label="الفترة">{monthName(f.result?.period)}</td>
+              <td data-label="السجلات">{number(f.result?.valid?.length || 0)}</td>
               <td data-label="الحالة">
                 <Badge result={f.result} />
               </td>

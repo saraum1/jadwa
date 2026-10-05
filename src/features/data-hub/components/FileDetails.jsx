@@ -18,13 +18,15 @@ export const time = (t) =>
 export const warnCount = (r) =>
   r.issues.filter((i) => i.level === "warning").length;
 export function Badge({ result: r }) {
+  if (!r) return null;
   return (
     <span className={"hub-badge " + (warnCount(r) ? "review" : "ready")}>
       {warnCount(r) ? "يحتاج مراجعة ربط" : "جاهز للربط"}
     </span>
   );
 }
-export function PreviewTable({ headers, rows }) {
+export function PreviewTable({ headers = [], rows = [] }) {
+  if (!rows || !rows.length) return null;
   return (
     <table>
       <thead>
@@ -37,19 +39,27 @@ export function PreviewTable({ headers, rows }) {
         </tr>
       </thead>
       <tbody>
-        {rows.slice(0, 5).map((r, i) => (
-          <tr key={i}>
-            {r.cells.map((c, j) => (
-              <td key={j}>{c}</td>
-            ))}
-          </tr>
-        ))}
+        {rows.slice(0, 5).map((r, i) => {
+          const cells = Array.isArray(r?.cells)
+            ? r.cells
+            : headers.length
+              ? headers.map((h) => r?.[h] ?? r?.values?.[h] ?? "")
+              : Object.values(r?.values || r || {});
+          return (
+            <tr key={i}>
+              {cells.map((c, j) => (
+                <td key={j}>{typeof c === "object" ? JSON.stringify(c) : String(c ?? "")}</td>
+              ))}
+            </tr>
+          );
+        })}
       </tbody>
     </table>
   );
 }
 export function Issues({ result }) {
-  return !result.issues.length ? (
+  if (!result) return null;
+  return !result.issues?.length ? (
     <div className="hub-issue">
       <Icon name="check" /> اجتازت السجلات فحوص الحقول والتواريخ والأرقام. هذا
       لا يتحقق من صحة المستندات الأصلية.
@@ -76,15 +86,20 @@ export function Issues({ result }) {
   );
 }
 export function FileSummary({ file: d }) {
+  if (!d) return null;
+  const validCount = d.result?.valid?.length || 0;
+  const invalidCount = d.result?.invalid?.length || 0;
+  const issuesCount = d.result ? warnCount(d.result) : 0;
+  const schemaLabel = HubData.schemas[d.type]?.label || d.type;
   return (
     <dl className="hub-confirm">
       {[
-        ["اسم الملف", d.name],
-        ["المصدر", HubData.schemas[d.type].label],
-        ["الفترة", monthName(d.result.period)],
-        ["سجلات ستُجهّز", number(d.result.valid.length)],
-        ["سجلات ستُستبعد", number(d.result.invalid.length)],
-        ["ملاحظات للمراجعة", number(warnCount(d.result))],
+        ["اسم الملف", d.name || "—"],
+        ["المصدر", schemaLabel],
+        ["الفترة", monthName(d.result?.period)],
+        ["سجلات ستُجهّز", number(validCount)],
+        ["سجلات ستُستبعد", number(invalidCount)],
+        ["ملاحظات للمراجعة", number(issuesCount)],
       ].map(([k, v]) => (
         <div key={k}>
           <dt>{k}</dt>
@@ -109,18 +124,25 @@ export default function FileDetails({ file: f, onReplace, onDelete }) {
       </p>
       <h3>الأعمدة المطابقة</h3>
       <dl className="hub-confirm">
-        {HubData.schemas[f.type].fields
-          .filter((k) => f.mapping[k] >= 0)
-          .map((k) => (
-            <div key={k}>
-              <dt>{HubData.fields[k][0]}</dt>
-              <dd>{f.parsed.headers[f.mapping[k]]}</dd>
-            </div>
-          ))}
+        {HubData.schemas[f.type]?.fields
+          .filter((k) => {
+            const m = f.mapping?.[k];
+            return (typeof m === "number" && m >= 0) || (typeof m === "string" && m.trim().length > 0);
+          })
+          .map((k) => {
+            const m = f.mapping[k];
+            const headerName = typeof m === "number" ? f.parsed?.headers?.[m] : m;
+            return (
+              <div key={k}>
+                <dt>{HubData.fields[k]?.[0] || k}</dt>
+                <dd>{headerName || "—"}</dd>
+              </div>
+            );
+          })}
       </dl>
       <h3>أول خمسة سجلات مقبولة</h3>
       <div className="hub-table-scroll">
-        <PreviewTable headers={f.parsed.headers} rows={f.result.valid} />
+        <PreviewTable headers={f.parsed?.headers} rows={f.result?.valid} />
       </div>
       <h3 style={{ marginTop: 24 }}>ملاحظات الفحص</h3>
       <Issues result={f.result} />
